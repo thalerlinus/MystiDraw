@@ -1,6 +1,8 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { Link } from '@inertiajs/vue3';
+import { usePage } from '@inertiajs/vue3';
+import axios from 'axios';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
@@ -8,6 +10,25 @@ import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
 
 const showingNavigationDropdown = ref(false);
 const isScrolled = ref(false);
+const unopenedTicketsCount = ref(0);
+
+const page = usePage();
+
+// Load unopened tickets count for authenticated users
+const loadUnopenedTicketsCount = async () => {
+    if (!page.props.auth?.user) {
+        unopenedTicketsCount.value = 0;
+        return;
+    }
+    
+    try {
+        const response = await axios.get('/api/tickets/unopened-count');
+        unopenedTicketsCount.value = response.data.count || 0;
+    } catch (error) {
+        console.error('Error loading unopened tickets count:', error);
+        unopenedTicketsCount.value = 0;
+    }
+};
 
 const scrollToSection = (sectionId) => {
     // Check if we're on the home page
@@ -38,6 +59,7 @@ const handleScroll = () => {
 
 onMounted(() => {
     window.addEventListener('scroll', handleScroll);
+    loadUnopenedTicketsCount();
 });
 
 onUnmounted(() => {
@@ -114,13 +136,35 @@ onUnmounted(() => {
                 </div>
 
                 <!-- Right side actions -->
-                <div class="hidden lg:flex lg:items-center lg:space-x-4">
-                    <!-- Theme Toggle (Optional) -->
-                    <button class="p-2 text-gray-500 hover:text-blue-900 transition-colors duration-300 rounded-full hover:bg-blue-50">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
-                        </svg>
-                    </button>
+                <div class="hidden lg:flex lg:items-center lg:space-x-3">
+                    <!-- Ungeöffnete Tickets -->
+                    <template v-if="$page.props.auth.user">
+                        <Link 
+                            href="/tickets"
+                            class="relative p-2 text-gray-500 hover:text-blue-900 transition-colors duration-300 rounded-full hover:bg-blue-50 group"
+                        >
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path>
+                            </svg>
+                            <!-- Badge für ungeöffnete Tickets -->
+                            <span 
+                                v-if="unopenedTicketsCount > 0"
+                                class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center group-hover:bg-red-600 transition-colors duration-300"
+                            >
+                                {{ unopenedTicketsCount > 99 ? '99+' : unopenedTicketsCount }}
+                            </span>
+                        </Link>
+
+                        <!-- Inventar -->
+                        <Link 
+                            href="/inventory"
+                            class="p-2 text-gray-500 hover:text-blue-900 transition-colors duration-300 rounded-full hover:bg-blue-50"
+                        >
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M9 9h.01M15 9h.01M9 15h.01M15 15h.01"></path>
+                            </svg>
+                        </Link>
+                    </template>
 
                     <!-- User Dropdown -->
                     <div class="relative">

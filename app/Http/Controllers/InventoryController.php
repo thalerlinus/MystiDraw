@@ -5,39 +5,11 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\TicketOutcome;
+use App\Services\CdnService;
 use Inertia\Inertia;
 
 class InventoryController extends Controller
 {
-    private function getImageUrl($imagePath)
-    {
-        if (!$imagePath) {
-            return null;
-        }
-        
-        // Wenn bereits absolute URL, direkt zurückgeben
-        if (preg_match('/^https?:\/\//i', $imagePath)) {
-            return $imagePath;
-        }
-        
-        // BunnyCDN Pull Zone aus Config holen
-        $pullZone = config('filesystems.disks.bunnycdn.pull_zone');
-        
-        if ($pullZone) {
-            // Pull Zone normalisieren (entferne Protokoll und trailing slash)
-            $normalizedPullZone = preg_replace('/^https?:\/\//i', '', $pullZone);
-            $normalizedPullZone = rtrim($normalizedPullZone, '/');
-            
-            // Pfad normalisieren (entferne leading slash)
-            $sanitizedPath = ltrim($imagePath, '/');
-            
-            return "https://{$normalizedPullZone}/{$sanitizedPath}";
-        }
-        
-        // Fallback zu lokalem Storage
-        return "/storage/{$imagePath}";
-    }
-
     public function index()
     {
         // Get all won prizes for the authenticated user
@@ -64,7 +36,7 @@ class InventoryController extends Controller
                         'id' => $product->id,
                         'name' => $product->name,
                         'description' => $product->description,
-                        'image_url' => $image ? $this->getImageUrl($image->path) : null,
+                        'image_url' => CdnService::getProductImageUrl($product),
                         'value' => $product->price,
                     ],
                     'tier' => $outcome->tier,

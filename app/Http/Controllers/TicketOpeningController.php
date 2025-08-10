@@ -5,41 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\Ticket;
 use App\Models\TicketOutcome;
 use App\Models\RaffleItem;
+use App\Services\CdnService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 
 class TicketOpeningController extends Controller
 {
-    private function getImageUrl($imagePath)
-    {
-        if (!$imagePath) {
-            return null;
-        }
-        
-        // Wenn bereits absolute URL, direkt zurückgeben
-        if (preg_match('/^https?:\/\//i', $imagePath)) {
-            return $imagePath;
-        }
-        
-        // BunnyCDN Pull Zone aus Config holen
-        $pullZone = config('filesystems.disks.bunnycdn.pull_zone');
-        
-        if ($pullZone) {
-            // Pull Zone normalisieren (entferne Protokoll und trailing slash)
-            $normalizedPullZone = preg_replace('/^https?:\/\//i', '', $pullZone);
-            $normalizedPullZone = rtrim($normalizedPullZone, '/');
-            
-            // Pfad normalisieren (entferne leading slash)
-            $sanitizedPath = ltrim($imagePath, '/');
-            
-            return "https://{$normalizedPullZone}/{$sanitizedPath}";
-        }
-        
-        // Fallback zu lokalem Storage
-        return "/storage/{$imagePath}";
-    }
-
     public function openTicket(Request $request, Ticket $ticket)
     {
         // Verify ownership
@@ -52,11 +24,10 @@ class TicketOpeningController extends Controller
             ->with('product.images')
             ->get()
             ->map(function ($item) {
-                $image = $item->product->images->first();
                 return [
                     'id' => $item->product->id,
                     'name' => $item->product->name,
-                    'image_url' => $image ? $this->getImageUrl($image->path) : null,
+                    'image_url' => CdnService::getProductImageUrl($item->product),
                     'tier' => $item->tier,
                     'quantity_total' => $item->quantity_total,
                 ];
@@ -109,11 +80,10 @@ class TicketOpeningController extends Controller
                 ->with('product.images')
                 ->get()
                 ->map(function ($item) {
-                    $image = $item->product->images->first();
                     return [
                         'id' => $item->product->id,
                         'name' => $item->product->name,
-                        'image_url' => $image ? $this->getImageUrl($image->path) : null,
+                        'image_url' => CdnService::getProductImageUrl($item->product),
                         'tier' => $item->tier,
                         'quantity_total' => $item->quantity_total,
                     ];
@@ -258,7 +228,7 @@ class TicketOpeningController extends Controller
                 'id' => $product->id,
                 'name' => $product->name,
                 'description' => $product->description,
-                'image_url' => $image ? $this->getImageUrl($image->path) : null,
+                'image_url' => CdnService::getProductImageUrl($product),
                 'value' => $product->price
             ],
             'message' => "Gewonnen: {$product->name}!"
