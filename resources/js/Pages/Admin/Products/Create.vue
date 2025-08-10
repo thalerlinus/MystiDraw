@@ -7,10 +7,12 @@ import draggable from 'vuedraggable';
 const form = useForm({ sku:'', name:'', description:'', base_cost:'', default_tier:'', images: [] });
 const imageFiles = ref([]);
 const dragOptions = {
-  animation: 150,
+  animation: 200,
   group: 'images',
   disabled: false,
-  ghostClass: 'ghost'
+  ghostClass: 'ghost',
+  chosenClass: 'sortable-chosen',
+  dragClass: 'sortable-drag'
 };
 
 function onFiles(e){
@@ -159,7 +161,7 @@ function submit(){
         <div v-if="imageFiles.length > 0" class="space-y-4">
           <div class="flex items-center justify-between">
             <h3 class="text-sm font-medium text-gray-900">Bilder ({{ imageFiles.length }})</h3>
-            <p class="text-xs text-gray-500">Ziehen Sie die Bilder, um die Reihenfolge zu ändern</p>
+            <p class="text-xs text-gray-500">Ziehen zum Sortieren • Erstes = Hauptbild</p>
           </div>
           
           <draggable 
@@ -167,13 +169,18 @@ function submit(){
             v-bind="dragOptions"
             @end="updateFormImages"
             item-key="id"
-            class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+            class="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3"
           >
             <template #item="{ element, index }">
               <div class="relative group cursor-move bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                <!-- Primary Badge for first image -->
+                <div v-if="index === 0" class="absolute top-0.5 left-0.5 z-10 bg-indigo-600 text-white rounded px-1 py-0.5 text-xs font-semibold">
+                  #1
+                </div>
+                
                 <!-- Drag Handle -->
-                <div class="absolute top-2 left-2 z-10 bg-white bg-opacity-90 rounded p-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <svg class="h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="absolute top-0.5 right-0.5 z-10 bg-white bg-opacity-90 rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <svg class="h-3 w-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
                   </svg>
                 </div>
@@ -182,9 +189,9 @@ function submit(){
                 <button 
                   @click="removeImage(index)"
                   type="button"
-                  class="absolute top-2 right-2 z-10 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                  class="absolute top-0.5 right-4 z-10 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
                 >
-                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                   </svg>
                 </button>
@@ -199,12 +206,12 @@ function submit(){
                 </div>
                 
                 <!-- Image Info -->
-                <div class="p-2">
+                <div class="p-1">
                   <p class="text-xs text-gray-600 truncate" :title="element.name">
                     {{ element.name }}
                   </p>
-                  <p class="text-xs text-gray-400">
-                    Position: {{ index + 1 }}
+                  <p class="text-xs" :class="index === 0 ? 'text-indigo-600 font-medium' : 'text-gray-400'">
+                    #{{ index + 1 }}
                   </p>
                 </div>
               </div>
@@ -244,6 +251,7 @@ function submit(){
   opacity: 0.5;
   background: #f3f4f6;
   border: 2px dashed #9ca3af;
+  transform: rotate(2deg);
 }
 
 .drag-area {
@@ -253,5 +261,28 @@ function submit(){
 .drag-area.drag-over {
   border-color: #3b82f6;
   background-color: #dbeafe;
+}
+
+/* Drag handle for images */
+.cursor-move {
+  cursor: grab;
+}
+
+.cursor-move:active {
+  cursor: grabbing;
+}
+
+/* Smooth transitions for reordering */
+.sortable-ghost {
+  opacity: 0.4;
+}
+
+.sortable-chosen {
+  transform: rotate(2deg);
+}
+
+.sortable-drag {
+  transform: rotate(5deg);
+  z-index: 9999;
 }
 </style>

@@ -10,7 +10,7 @@ class Raffle extends Model
     use HasFactory;
 
     protected $fillable = [
-        'name','slug','status','starts_at','ends_at','base_ticket_price','currency','public_stats'
+        'name','slug','status','starts_at','ends_at','base_ticket_price','currency','public_stats','category_id'
     ];
 
     protected function casts(): array
@@ -23,9 +23,11 @@ class Raffle extends Model
         ];
     }
 
-    public function categories()
+
+
+    public function category()
     {
-        return $this->belongsToMany(Category::class, 'raffle_category');
+        return $this->belongsTo(Category::class, 'category_id');
     }
 
     public function pricingTiers()

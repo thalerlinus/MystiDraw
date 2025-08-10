@@ -11,6 +11,7 @@ const links = [
   { href: '/admin', label: 'Dashboard', icon: ['fas','gauge'] },
   { href: '/admin/raffles', label: 'Raffles', icon: ['fas','ticket'] },
   { href: '/admin/products', label: 'Produkte', icon: ['fas','box-open'] },
+  { href: '/admin/categories', label: 'Kategorien', icon: ['fas','folder-tree'] },
   { href: '/admin/orders', label: 'Bestellungen', icon: ['fas','shopping-cart'] },
   { href: '/admin/shipments', label: 'Versand', icon: ['fas','truck'] },
   { href: '/admin/inventory', label: 'Inventar', icon: ['fas','warehouse'] },

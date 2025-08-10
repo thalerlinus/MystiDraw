@@ -22,7 +22,7 @@ class DashboardController extends Controller
         $revenueToday = (clone $ordersQuery)->where('paid_at', '>=', $today)->sum('total');
         $totalTickets = Ticket::count();
         $ticketsToday = Ticket::where('created_at', '>=', $today)->count();
-        $activeRaffles = Raffle::where('status', 'active')->withCount('tickets')->get(['id','name','status','starts_at','ends_at']);
+    $activeRaffles = Raffle::where('status', 'live')->withCount('tickets')->get(['id','name','status','starts_at','ends_at']);
         $recentOrders = Order::latest('id')->limit(10)->get(['id','user_id','status','total','currency','paid_at']);
         // Low inventory: compute remaining (total - awarded) over all raffle_items for the product
         $lowInventory = Product::where('active', true)

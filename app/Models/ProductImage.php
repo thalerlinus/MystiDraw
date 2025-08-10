@@ -24,4 +24,12 @@ class ProductImage extends Model
     {
         return $this->belongsTo(Product::class);
     }
+
+    protected static function booted(): void
+    {
+        static::deleting(function (ProductImage $image) {
+            // Beim Löschen auch Datei + Thumb von Bunny entfernen
+            try { app(\App\Services\ImageUploadService::class)->deleteImageWithThumb($image->path); } catch (\Throwable) {}
+        });
+    }
 }

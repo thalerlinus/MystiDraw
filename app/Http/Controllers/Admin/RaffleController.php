@@ -3,8 +3,13 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Raffle;
+use App\Models\Category;
+use App\Models\RafflePricingTier;
+use App\Models\RaffleItem;
+use App\Models\Product;
 use Inertia\Inertia;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class RaffleController extends Controller
 {
@@ -23,7 +28,14 @@ class RaffleController extends Controller
 
     public function create()
     {
-        return Inertia::render('Admin/Raffles/Create');
+    $categories = Category::orderBy('name')->get(['id','name']);
+        $products = Product::where('active', true)->orderBy('name')->limit(200)->get(['id','name','default_tier','thumbnail_path','description']);
+        $bunnyPull = config('filesystems.disks.bunnycdn.pull_zone');
+        return Inertia::render('Admin/Raffles/Create', [
+            'categories' => $categories,
+            'products' => $products,
+            'bunny' => [ 'pull_zone' => $bunnyPull ],
+        ]);
     }
 
     public function store(Request $request)
@@ -31,14 +43,41 @@ class RaffleController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'slug' => 'required|string|max:255|unique:raffles,slug',
+            'category_id' => 'required|exists:categories,id',
             'starts_at' => 'nullable|date',
             'ends_at' => 'nullable|date|after:starts_at',
             'base_ticket_price' => 'required|numeric|min:0',
-            'currency' => 'required|string|size:3'
+            'currency' => 'required|string|size:3',
+            'pricing_tiers' => 'array',
+            'pricing_tiers.*.min_qty' => 'required_with:pricing_tiers|integer|min:1',
+            'pricing_tiers.*.unit_price' => 'required_with:pricing_tiers|numeric|min:0',
+            'items' => 'array',
+            'items.*.product_id' => 'required_with:items|exists:products,id',
+            'items.*.tier' => 'required_with:items|string|in:A,B,C,D,E',
+            'items.*.quantity_total' => 'required_with:items|integer|min:1',
+            'items.*.weight' => 'nullable|integer|min:1',
+            'items.*.is_last_one' => 'boolean'
         ]);
         $data['status'] = 'draft';
         $data['public_stats'] = false;
+        $pricingTiers = $data['pricing_tiers'] ?? [];
+        $items = $data['items'] ?? [];
+        unset($data['pricing_tiers'],$data['items']);
         $raffle = Raffle::create($data);
+        foreach ($pricingTiers as $tier) {
+            if ($tier['min_qty'] && $tier['unit_price'] !== '') {
+                $raffle->pricingTiers()->create($tier);
+            }
+        }
+        foreach ($items as $item) {
+            $raffle->items()->create([
+                'product_id' => $item['product_id'],
+                'tier' => $item['tier'],
+                'quantity_total' => $item['quantity_total'],
+                'weight' => $item['weight'] ?? 1,
+                'is_last_one' => $item['is_last_one'] ?? false,
+            ]);
+        }
         return redirect()->route('admin.raffles.edit', $raffle)->with('success','Raffle angelegt');
     }
 
@@ -51,20 +90,66 @@ class RaffleController extends Controller
     public function edit(Raffle $raffle)
     {
         $raffle->load(['pricingTiers','items']);
-        return Inertia::render('Admin/Raffles/Edit', [ 'raffle' => $raffle ]);
+        $categories = Category::orderBy('name')->get(['id','name']);
+        $products = Product::where('active', true)->orderBy('name')->limit(200)->get(['id','name','default_tier','thumbnail_path','description']);
+        $bunnyPull = config('filesystems.disks.bunnycdn.pull_zone');
+        return Inertia::render('Admin/Raffles/Edit', [
+            'raffle' => $raffle,
+            'categories' => $categories,
+            'products' => $products,
+            'bunny' => [ 'pull_zone' => $bunnyPull ],
+        ]);
     }
 
     public function update(Request $request, Raffle $raffle)
     {
         $data = $request->validate([
             'name' => 'required|string|max:255',
+            'slug' => ['required','string','max:255', Rule::unique('raffles','slug')->ignore($raffle->id)],
+            'category_id' => 'required|exists:categories,id',
             'starts_at' => 'nullable|date',
             'ends_at' => 'nullable|date|after:starts_at',
             'base_ticket_price' => 'required|numeric|min:0',
             'currency' => 'required|string|size:3',
-            'status' => 'required|string|in:draft,active,finished'
+            'status' => 'required|string|in:draft,scheduled,live,paused,sold_out,finished,archived',
+            'pricing_tiers' => 'array',
+            'pricing_tiers.*.min_qty' => 'required_with:pricing_tiers|integer|min:1',
+            'pricing_tiers.*.unit_price' => 'required_with:pricing_tiers|numeric|min:0',
+            'items' => 'array',
+            'items.*.product_id' => 'required_with:items|exists:products,id',
+            'items.*.tier' => 'required_with:items|string|in:A,B,C,D,E',
+            'items.*.quantity_total' => 'required_with:items|integer|min:1',
+            'items.*.weight' => 'nullable|integer|min:1',
+            'items.*.is_last_one' => 'boolean'
         ]);
+
+        $pricingTiers = $data['pricing_tiers'] ?? [];
+        $items = $data['items'] ?? [];
+        unset($data['pricing_tiers'],$data['items']);
+
         $raffle->update($data);
+
+        // Sync pricing tiers (simple approach: replace all)
+        $raffle->pricingTiers()->delete();
+        foreach ($pricingTiers as $tier) {
+            if (($tier['min_qty'] ?? null) && $tier['unit_price'] !== '') {
+                $raffle->pricingTiers()->create([
+                    'min_qty' => $tier['min_qty'],
+                    'unit_price' => $tier['unit_price']
+                ]);
+            }
+        }
+        // Sync items
+        $raffle->items()->delete();
+        foreach ($items as $item) {
+            $raffle->items()->create([
+                'product_id' => $item['product_id'],
+                'tier' => $item['tier'],
+                'quantity_total' => $item['quantity_total'],
+                'weight' => $item['weight'] ?? 1,
+                'is_last_one' => $item['is_last_one'] ?? false,
+            ]);
+        }
         return back()->with('success','Gespeichert');
     }
 }

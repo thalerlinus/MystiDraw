@@ -10,13 +10,23 @@ const showingNavigationDropdown = ref(false);
 const isScrolled = ref(false);
 
 const scrollToSection = (sectionId) => {
-    const element = document.getElementById(sectionId);
-    if (element) {
-        element.scrollIntoView({ 
-            behavior: 'smooth',
-            block: 'start'
-        });
+    // Check if we're on the home page
+    const currentRoute = route().current();
+    
+    if (currentRoute === 'home' || currentRoute === '/') {
+        // We're on the home page, scroll directly to the section
+        const element = document.getElementById(sectionId);
+        if (element) {
+            element.scrollIntoView({ 
+                behavior: 'smooth',
+                block: 'start'
+            });
+        }
+    } else {
+        // We're on a different page, navigate to home with section anchor
+        window.location.href = `/#${sectionId}`;
     }
+    
     // Close mobile menu after navigation
     showingNavigationDropdown.value = false;
 };
@@ -50,16 +60,17 @@ onUnmounted(() => {
                     <div class="shrink-0 flex items-center">
                         <Link href="/" class="flex items-center space-x-3 group">
                             <div class="relative">
-                                <ApplicationLogo
-                                    class="block h-12 w-auto fill-current text-indigo-600 group-hover:text-indigo-700 transition-colors duration-300"
-                                />
-                                <div class="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 opacity-0 group-hover:opacity-20 rounded-lg transition-opacity duration-300"></div>
+                                <div class="w-12 h-12 bg-gradient-to-br from-blue-900 to-blue-700 rounded-xl flex items-center justify-center group-hover:shadow-lg transition-all duration-300">
+                                    <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"></path>
+                                    </svg>
+                                </div>
                             </div>
                             <div class="hidden md:block">
-                                <h1 class="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                                    Ihr Unternehmen
+                                <h1 class="text-xl font-bold text-blue-900 group-hover:text-blue-800 transition-colors duration-300">
+                                    MystiDraw
                                 </h1>
-                                <p class="text-xs text-gray-500 -mt-1">Digital Solutions</p>
+                                <p class="text-xs text-gray-500 -mt-1">Lose • Gewinne • Überraschungen</p>
                             </div>
                         </Link>
                     </div>
@@ -68,34 +79,34 @@ onUnmounted(() => {
                     <div class="hidden space-x-1 lg:ml-12 lg:flex">
                         <Link
                             href="/"
-                            class="relative px-4 py-2 text-sm font-semibold text-gray-700 rounded-full transition-all duration-300 ease-in-out group hover:text-indigo-600"
+                            class="relative px-4 py-2 text-sm font-semibold transition-all duration-300 ease-in-out group rounded-full"
                             :class="route().current('home') || route().current('/') 
-                                ? 'text-indigo-600 bg-indigo-50' 
-                                : 'hover:bg-gray-50'"
+                                ? 'text-blue-900 bg-blue-50' 
+                                : 'text-gray-700 hover:text-blue-900 hover:bg-blue-50'"
                         >
                             <span class="relative z-10">Startseite</span>
-                            <div class="absolute inset-0 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+                        </Link>
+                        
+                        <Link
+                            href="/raffles"
+                            class="relative px-4 py-2 text-sm font-semibold transition-all duration-300 ease-in-out group rounded-full"
+                            :class="route().current('raffles*') 
+                                ? 'text-blue-900 bg-blue-50' 
+                                : 'text-gray-700 hover:text-blue-900 hover:bg-blue-50'"
+                        >
+                            <span class="relative z-10">Raffles</span>
                         </Link>
                         
                         <button
-                            @click="scrollToSection('about')"
-                            class="relative px-4 py-2 text-sm font-semibold text-gray-700 rounded-full transition-all duration-300 ease-in-out group hover:text-indigo-600 hover:bg-gray-50"
+                            @click="scrollToSection('how-it-works')"
+                            class="relative px-4 py-2 text-sm font-semibold text-gray-700 rounded-full transition-all duration-300 ease-in-out group hover:text-blue-900 hover:bg-blue-50"
                         >
-                            <span class="relative z-10">Über uns</span>
-                            <div class="absolute inset-0 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
-                        </button>
-                        
-                        <button
-                            @click="scrollToSection('services')"
-                            class="relative px-4 py-2 text-sm font-semibold text-gray-700 rounded-full transition-all duration-300 ease-in-out group hover:text-indigo-600 hover:bg-gray-50"
-                        >
-                            <span class="relative z-10">Services</span>
-                            <div class="absolute inset-0 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+                            <span class="relative z-10">Wie es funktioniert</span>
                         </button>
                         
                         <button
                             @click="scrollToSection('contact')"
-                            class="relative px-6 py-2 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full transition-all duration-300 ease-in-out hover:from-indigo-700 hover:to-purple-700 hover:shadow-lg hover:shadow-indigo-500/25 transform hover:scale-105"
+                            class="relative px-6 py-2 text-sm font-semibold text-white bg-gradient-to-r from-blue-900 to-blue-800 rounded-full transition-all duration-300 ease-in-out hover:from-blue-800 hover:to-blue-700 hover:shadow-lg hover:shadow-blue-900/25 transform hover:scale-105"
                         >
                             Kontakt
                         </button>
@@ -105,7 +116,7 @@ onUnmounted(() => {
                 <!-- Right side actions -->
                 <div class="hidden lg:flex lg:items-center lg:space-x-4">
                     <!-- Theme Toggle (Optional) -->
-                    <button class="p-2 text-gray-500 hover:text-indigo-600 transition-colors duration-300 rounded-full hover:bg-gray-100">
+                    <button class="p-2 text-gray-500 hover:text-blue-900 transition-colors duration-300 rounded-full hover:bg-blue-50">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
                         </svg>
@@ -117,9 +128,9 @@ onUnmounted(() => {
                             <template #trigger>
                                 <button
                                     type="button"
-                                    class="flex items-center space-x-3 px-4 py-2 text-sm font-medium text-gray-700 bg-white/80 border border-gray-200/50 rounded-full hover:bg-white hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-300 group"
+                                    class="flex items-center space-x-3 px-4 py-2 text-sm font-medium text-gray-700 bg-white/80 border border-gray-200/50 rounded-full hover:bg-white hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-300 group"
                                 >
-                                    <div class="w-8 h-8 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full flex items-center justify-center">
+                                    <div class="w-8 h-8 bg-gradient-to-r from-blue-900 to-blue-700 rounded-full flex items-center justify-center">
                                         <span class="text-white text-sm font-semibold">
                                             {{ $page.props.auth.user ? $page.props.auth.user.name.charAt(0).toUpperCase() : 'G' }}
                                         </span>
@@ -217,29 +228,34 @@ onUnmounted(() => {
             <div class="px-4 py-6 space-y-2">
                 <Link 
                     href="/" 
-                    class="block px-4 py-3 text-base font-medium text-gray-700 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all duration-300"
-                    :class="route().current('/') ? 'text-indigo-600 bg-indigo-50' : ''"
+                    class="block px-4 py-3 text-base font-medium transition-all duration-300 rounded-lg"
+                    :class="route().current('/') 
+                        ? 'text-blue-900 bg-blue-50' 
+                        : 'text-gray-700 hover:text-blue-900 hover:bg-blue-50'"
                 >
                     Startseite
                 </Link>
                 
-                <button
-                    @click="scrollToSection('about')"
-                    class="w-full text-left px-4 py-3 text-base font-medium text-gray-700 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all duration-300"
+                <Link 
+                    href="/raffles" 
+                    class="block px-4 py-3 text-base font-medium transition-all duration-300 rounded-lg"
+                    :class="route().current('raffles*') 
+                        ? 'text-blue-900 bg-blue-50' 
+                        : 'text-gray-700 hover:text-blue-900 hover:bg-blue-50'"
                 >
-                    Über uns
-                </button>
+                    Raffles
+                </Link>
                 
                 <button
-                    @click="scrollToSection('services')"
-                    class="w-full text-left px-4 py-3 text-base font-medium text-gray-700 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all duration-300"
+                    @click="scrollToSection('how-it-works')"
+                    class="w-full text-left px-4 py-3 text-base font-medium text-gray-700 hover:text-blue-900 hover:bg-blue-50 rounded-lg transition-all duration-300"
                 >
-                    Services
+                    Wie es funktioniert
                 </button>
                 
                 <button
                     @click="scrollToSection('contact')"
-                    class="w-full text-left px-4 py-3 text-base font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-300"
+                    class="w-full text-left px-4 py-3 text-base font-medium text-white bg-gradient-to-r from-blue-900 to-blue-800 rounded-lg hover:from-blue-800 hover:to-blue-700 transition-all duration-300"
                 >
                     Kontakt
                 </button>
@@ -249,7 +265,7 @@ onUnmounted(() => {
             <div class="px-4 py-4 border-t border-gray-200/50">
                 <template v-if="$page.props.auth.user">
                     <div class="flex items-center space-x-3 px-4 py-3 bg-gray-50 rounded-lg mb-3">
-                        <div class="w-10 h-10 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full flex items-center justify-center">
+                        <div class="w-10 h-10 bg-gradient-to-r from-blue-900 to-blue-700 rounded-full flex items-center justify-center">
                             <span class="text-white font-semibold">
                                 {{ $page.props.auth.user.name.charAt(0).toUpperCase() }}
                             </span>

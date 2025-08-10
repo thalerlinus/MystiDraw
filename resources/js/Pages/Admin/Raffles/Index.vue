@@ -10,13 +10,23 @@ const filters = computed(()=> page.props.filters || {});
 <template>
   <Head title="Raffles" />
   <AdminLayout title="Raffles">
+    <div v-if="$page.props.flash?.success" class="mb-4 rounded border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-700">
+      {{$page.props.flash.success}}
+    </div>
+    <div v-if="$page.props.flash?.error" class="mb-4 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
+      {{$page.props.flash.error}}
+    </div>
     <div class="mb-4 flex items-center gap-3">
       <form method="get" class="flex items-center gap-2">
         <select name="status" class="rounded border-gray-300" @change="$event.target.form.submit()" :value="filters.status">
           <option value="">Alle Status</option>
           <option value="draft">Draft</option>
-          <option value="active">Aktiv</option>
+          <option value="scheduled">Geplant</option>
+          <option value="live">Live</option>
+          <option value="paused">Pausiert</option>
+          <option value="sold_out">Ausverkauft</option>
           <option value="finished">Beendet</option>
+          <option value="archived">Archiviert</option>
         </select>
       </form>
       <Link href="/admin/raffles/create" class="rounded bg-indigo-600 px-3 py-2 text-sm font-medium text-white">Neu</Link>

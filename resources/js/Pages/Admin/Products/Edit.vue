@@ -2,9 +2,14 @@
 import { Head, useForm, usePage, router } from '@inertiajs/vue3';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { ref } from 'vue';
+import { getImageUrl } from '@/utils/cdn';
 import draggable from 'vuedraggable';
 
-const product = usePage().props.product;
+const page = usePage();
+const product = page.props.product;
+// Bunny CDN base (pull zone) if provided from backend config
+const bunnyPullZone = page.props.bunny?.pull_zone || null;
+const buildImg = (path) => getImageUrl(path, bunnyPullZone);
 const form = useForm({ name: product.name, description: product.description, base_cost: product.base_cost, default_tier: product.default_tier, active: product.active });
 function submit(){ form.put(`/admin/products/${product.id}`); }
 
@@ -14,10 +19,12 @@ const imageFiles = ref([]);
 
 // Drag & drop configuration
 const dragOptions = {
-  animation: 150,
+  animation: 200,
   group: 'images',
   disabled: false,
-  ghostClass: 'ghost'
+  ghostClass: 'ghost',
+  chosenClass: 'sortable-chosen',
+  dragClass: 'sortable-drag'
 };
 
 function onFilesSelected(e){
@@ -84,6 +91,16 @@ function onDragLeave(e) {
 }
 
 // Existing image management
+const sortedImages = ref([]);
+
+// Initialize sorted images from product
+function initializeSortedImages() {
+  sortedImages.value = [...product.images].sort((a,b) => a.sort_order - b.sort_order);
+}
+
+// Call on component mount
+initializeSortedImages();
+
 function setPrimary(image){
   router.post(`/admin/products/${product.id}/images/${image.id}`, { _method:'PUT', is_primary: true }, { preserveScroll: true });
 }
@@ -94,17 +111,31 @@ function removeImage(image){
   if(!confirm('Bild wirklich löschen?')) return;
   router.post(`/admin/products/${product.id}/images/${image.id}`, { _method:'DELETE' }, { preserveScroll: true });
 }
-function dragStart(ev, img){ ev.dataTransfer.effectAllowed='move'; ev.dataTransfer.setData('text/plain', img.id); }
-function dragOver(ev){ ev.preventDefault(); ev.dataTransfer.dropEffect='move'; }
-function drop(ev, target){
-  ev.preventDefault();
-  const sourceId = parseInt(ev.dataTransfer.getData('text/plain'));
-  if(sourceId===target.id) return;
-  const ids = product.images.slice().sort((a,b)=> a.sort_order - b.sort_order).map(i=> i.id);
-  const from = ids.indexOf(sourceId);
-  const to = ids.indexOf(target.id);
-  ids.splice(to,0, ids.splice(from,1)[0]);
-  router.post(`/admin/products/${product.id}/images/reorder`, { _method:'PUT', order: ids }, { preserveScroll: true });
+
+// Handle drag end for existing images with automatic primary logic
+function onExistingImagesDragEnd() {
+  const newOrder = sortedImages.value.map(img => img.id);
+  
+  // Auto-set first image as primary
+  const firstImage = sortedImages.value[0];
+  if (firstImage && !firstImage.is_primary) {
+    // Update primary status locally for immediate UI feedback
+    sortedImages.value.forEach((img, index) => {
+      img.is_primary = index === 0;
+    });
+    
+    // Send primary update to server
+    router.post(`/admin/products/${product.id}/images/${firstImage.id}`, { 
+      _method:'PUT', 
+      is_primary: true 
+    }, { preserveScroll: true });
+  }
+  
+  // Send reorder request
+  router.post(`/admin/products/${product.id}/images/reorder`, { 
+    _method:'PUT', 
+    order: newOrder 
+  }, { preserveScroll: true });
 }
 </script>
 <template>
@@ -241,7 +272,7 @@ function drop(ev, target){
             v-model="imageFiles" 
             v-bind="dragOptions"
             item-key="id"
-            class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+            class="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3"
           >
             <template #item="{ element, index }">
               <div class="relative group cursor-move bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
@@ -249,9 +280,9 @@ function drop(ev, target){
                 <button 
                   @click="removeNewImage(index)"
                   type="button"
-                  class="absolute top-2 right-2 z-10 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                  class="absolute top-1 right-1 z-10 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
                 >
-                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                   </svg>
                 </button>
@@ -266,7 +297,7 @@ function drop(ev, target){
                 </div>
                 
                 <!-- Image Info -->
-                <div class="p-2">
+                <div class="p-1">
                   <p class="text-xs text-gray-600 truncate" :title="element.name">
                     {{ element.name }}
                   </p>
@@ -282,48 +313,70 @@ function drop(ev, target){
       <div class="rounded-lg border border-gray-200 p-6">
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-md font-medium text-gray-900">Vorhandene Bilder ({{ product.images.length }})</h3>
-          <p class="text-xs text-gray-500">Drag & Drop zum Sortieren</p>
+          <div class="text-right">
+            <p class="text-xs text-gray-500">Drag & Drop zum Sortieren</p>
+            <p class="text-xs text-indigo-600">Das erste Bild wird automatisch zum Hauptbild</p>
+          </div>
         </div>
         
         <div v-if="product.images.length===0" class="text-sm text-gray-500 text-center py-8">
           Noch keine Bilder vorhanden.
         </div>
-        <ul v-else class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-          <li v-for="img in [...product.images].sort((a,b)=> a.sort_order-b.sort_order)" :key="img.id" 
-              draggable="true" 
-              @dragstart="e=>dragStart(e,img)" 
-              @dragover="dragOver" 
-              @drop="e=>drop(e,img)" 
-              class="group relative rounded-lg border bg-white p-2 shadow-sm hover:shadow-md transition-shadow cursor-move">
-            <div class="aspect-square w-full overflow-hidden rounded bg-gray-100">
-              <img :src="`/storage/${img.path}`" :alt="img.alt || ''" class="h-full w-full object-cover" />
-            </div>
-            <div class="mt-2 space-y-2">
-              <input 
-                :value="img.alt" 
-                @change="e=>updateAlt(img,e.target.value)" 
-                placeholder="Alt-Text" 
-                class="w-full rounded border-gray-300 px-2 py-1 text-xs" 
-              />
-              <div class="flex items-center justify-between gap-2">
-                <button 
-                  v-if="!img.is_primary" 
-                  @click.prevent="setPrimary(img)" 
-                  class="rounded bg-gray-200 hover:bg-gray-300 px-2 py-1 text-xs transition-colors"
-                >
-                  Als Hauptbild
-                </button>
-                <span v-else class="rounded bg-indigo-600 px-2 py-1 text-xs font-semibold text-white">Hauptbild</span>
-                <button 
-                  @click.prevent="removeImage(img)" 
-                  class="text-xs text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-2 py-1 rounded transition-colors"
-                >
-                  Löschen
-                </button>
+        <draggable 
+          v-else
+          v-model="sortedImages" 
+          v-bind="dragOptions"
+          item-key="id"
+          @end="onExistingImagesDragEnd"
+          class="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3"
+          tag="ul"
+        >
+          <template #item="{ element: img, index }">
+            <li :class="[
+              'group relative rounded-lg border bg-white p-1 shadow-sm hover:shadow-md transition-all cursor-move',
+              index === 0 || img.is_primary ? 'primary-border' : ''
+            ]">
+              <!-- Primary Badge -->
+              <div v-if="img.is_primary || index === 0" class="absolute top-0.5 left-0.5 z-10 bg-indigo-600 text-white rounded px-1 py-0.5 text-xs font-semibold">
+                #1
               </div>
-            </div>
-          </li>
-        </ul>
+              <!-- Drag Handle -->
+              <div class="absolute top-0.5 right-0.5 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                <svg class="h-3 w-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path>
+                </svg>
+              </div>
+              <div class="aspect-square w-full overflow-hidden rounded bg-gray-100">
+                <img :src="buildImg(img.path)" :alt="img.alt || ''" class="h-full w-full object-cover" />
+              </div>
+              <div class="mt-1 space-y-1">
+                <input 
+                  :value="img.alt" 
+                  @change="e=>updateAlt(img,e.target.value)" 
+                  placeholder="Alt-Text" 
+                  class="w-full rounded border-gray-300 px-1 py-0.5 text-xs" 
+                />
+                <div class="flex items-center justify-between gap-1">
+                  <button 
+                    v-if="index !== 0 && !img.is_primary" 
+                    @click.prevent="setPrimary(img)" 
+                    class="rounded bg-gray-200 hover:bg-gray-300 px-1 py-0.5 text-xs transition-colors"
+                  >
+                    #1
+                  </button>
+                  <span v-else-if="index === 0" class="text-xs text-indigo-600 font-medium">#{{ index + 1 }}</span>
+                  <span v-else class="text-xs text-gray-500">#{{ index + 1 }}</span>
+                  <button 
+                    @click.prevent="removeImage(img)" 
+                    class="text-xs text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-1 py-0.5 rounded transition-colors"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            </li>
+          </template>
+        </draggable>
       </div>
     </div>
   </AdminLayout>
@@ -334,6 +387,7 @@ function drop(ev, target){
   opacity: 0.5;
   background: #f3f4f6;
   border: 2px dashed #9ca3af;
+  transform: rotate(2deg);
 }
 
 .drag-area {
@@ -343,5 +397,34 @@ function drop(ev, target){
 .drag-area.drag-over {
   border-color: #3b82f6;
   background-color: #dbeafe;
+}
+
+/* Drag handle for existing images */
+.cursor-move {
+  cursor: grab;
+}
+
+.cursor-move:active {
+  cursor: grabbing;
+}
+
+/* Primary image highlighting */
+.primary-border {
+  border-color: #4f46e5;
+  border-width: 2px;
+}
+
+/* Smooth transitions for reordering */
+.sortable-ghost {
+  opacity: 0.4;
+}
+
+.sortable-chosen {
+  transform: rotate(2deg);
+}
+
+.sortable-drag {
+  transform: rotate(5deg);
+  z-index: 9999;
 }
 </style>

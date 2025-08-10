@@ -31,4 +31,13 @@ class Product extends Model
     {
         return $this->hasMany(RaffleItem::class);
     }
+
+    protected static function booted(): void
+    {
+        static::deleting(function (Product $product) {
+            // Bilder explizit löschen, damit deren Model-Events (Datei-Removal) feuern
+            $images = $product->images()->get();
+            foreach ($images as $img) { $img->delete(); }
+        });
+    }
 }
