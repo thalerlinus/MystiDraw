@@ -209,13 +209,14 @@ import { loadStripe } from '@stripe/stripe-js';
 
 const props = defineProps({
     raffle: { type: Object, required: true },
-    isOpen: { type: Boolean, default: false }
+    isOpen: { type: Boolean, default: false },
+    initialQuantity: { type: Number, default: 1 }
 });
 
 const emit = defineEmits(['close', 'purchase']);
 
 // Reactive data
-const quantity = ref(1);
+const quantity = ref(props.initialQuantity);
 
 // Quick select amounts
 const quickSelectAmounts = computed(() => {
@@ -419,11 +420,11 @@ watch(() => props.isOpen, async (open) => {
             try { paymentElement.value.unmount(); } catch (_) {}
             paymentElement.value = null;
         }
-    if (qtyTimer) { clearTimeout(qtyTimer); qtyTimer = null; }
-    currentIntentOpId++; // invalidate pending ops
+        if (qtyTimer) { clearTimeout(qtyTimer); qtyTimer = null; }
+        currentIntentOpId++; // invalidate pending ops
     } else {
         // reset state and immediately create an intent for initial quantity
-        quantity.value = 1;
+        quantity.value = props.initialQuantity;
         errorMessage.value = '';
         successMessage.value = '';
         await createIntent();

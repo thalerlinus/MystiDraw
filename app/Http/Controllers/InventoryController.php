@@ -26,30 +26,72 @@ class InventoryController extends Controller
             ->get()
             ->map(function ($outcome) {
                 $product = $outcome->raffleItem->product;
-                $image = $product->images->first();
                 
                 return [
                     'id' => $outcome->id,
                     'ticket_serial' => $outcome->ticket->serial,
+                    'ticket_id' => $outcome->ticket->id,
                     'raffle_name' => $outcome->raffleItem->raffle->name,
+                    'raffle_id' => $outcome->raffleItem->raffle->id,
                     'product' => [
                         'id' => $product->id,
                         'name' => $product->name,
                         'description' => $product->description,
                         'image_url' => CdnService::getProductImageUrl($product),
                         'value' => $product->price,
+                        'images' => $product->images->map(function ($image) {
+                            return [
+                                'id' => $image->id,
+                                'path' => $image->path,
+                                'alt_text' => $image->alt_text,
+                            ];
+                        }),
                     ],
                     'tier' => $outcome->tier,
+                    'is_last_one' => $outcome->is_last_one,
                     'won_at' => $outcome->created_at,
                     'status' => $outcome->status,
                 ];
             });
 
+        // Create prize groups by status
+        $createPrizeGroups = function($prizes) {
+            $grouped = [];
+            
+            foreach ($prizes as $prize) {
+                $productKey = $prize['product']['name'] . '|' . $prize['tier'] . '|' . ($prize['is_last_one'] ? '1' : '0') . '|' . $prize['status'];
+                
+                if (!isset($grouped[$productKey])) {
+                    $grouped[$productKey] = [
+                        'product' => $prize['product'],
+                        'tier' => $prize['tier'],
+                        'count' => 1,
+                        'is_last_one' => $prize['is_last_one'] || false,
+                        'status' => $prize['status'],
+                        'tickets' => [[
+                            'serial' => $prize['ticket_serial'],
+                            'ticket_id' => $prize['ticket_id'],
+                            'is_last_one' => $prize['is_last_one']
+                        ]]
+                    ];
+                } else {
+                    $grouped[$productKey]['count']++;
+                    $grouped[$productKey]['tickets'][] = [
+                        'serial' => $prize['ticket_serial'],
+                        'ticket_id' => $prize['ticket_id'],
+                        'is_last_one' => $prize['is_last_one']
+                    ];
+                }
+            }
+            
+            return array_values($grouped);
+        };
+
         // Group by status for better organization
         $inventoryData = [
-            'assigned' => $wonPrizes->where('status', 'assigned'),
-            'shipped' => $wonPrizes->where('status', 'shipped'),
-            'delivered' => $wonPrizes->where('status', 'delivered'),
+            'assigned' => $createPrizeGroups($wonPrizes->where('status', 'assigned')),
+            'shipped' => $createPrizeGroups($wonPrizes->where('status', 'shipped')),
+            'delivered' => $createPrizeGroups($wonPrizes->where('status', 'delivered')),
         ];
 
         // Statistics
@@ -63,6 +105,9 @@ class InventoryController extends Controller
         return Inertia::render('Inventory/Index', [
             'inventory' => $inventoryData,
             'stats' => $stats,
+            'bunny' => [
+                'pull_zone' => config('filesystems.disks.bunnycdn.pull_zone'),
+            ],
         ]);
     }
 }

@@ -12,7 +12,7 @@
         <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <div class="flex items-center">
             <div class="flex-shrink-0">
-              <i class="fa fa-ticket text-2xl text-blue-500"></i>
+              <font-awesome-icon :icon="['fas', 'ticket']" class="text-2xl text-blue-500" />
             </div>
             <div class="ml-4">
               <p class="text-sm font-medium text-gray-500">Gesamte Tickets</p>
@@ -24,7 +24,7 @@
         <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <div class="flex items-center">
             <div class="flex-shrink-0">
-              <i class="fa fa-envelope text-2xl text-orange-500"></i>
+              <font-awesome-icon :icon="['fas', 'envelope']" class="text-2xl text-orange-500" />
             </div>
             <div class="ml-4">
               <p class="text-sm font-medium text-gray-500">Ungeöffnet</p>
@@ -36,7 +36,7 @@
         <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <div class="flex items-center">
             <div class="flex-shrink-0">
-              <i class="fa fa-envelope-open text-2xl text-green-500"></i>
+              <font-awesome-icon :icon="['fas', 'envelope-open']" class="text-2xl text-green-500" />
             </div>
             <div class="ml-4">
               <p class="text-sm font-medium text-gray-500">Geöffnet</p>
@@ -48,7 +48,7 @@
         <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <div class="flex items-center">
             <div class="flex-shrink-0">
-              <i class="fa fa-trophy text-2xl text-yellow-500"></i>
+              <font-awesome-icon :icon="['fas', 'trophy']" class="text-2xl text-yellow-500" />
             </div>
             <div class="ml-4">
               <p class="text-sm font-medium text-gray-500">Preise gewonnen</p>
@@ -63,20 +63,32 @@
         <div v-for="raffleGroup in ticketsByRaffle" :key="raffleGroup.raffle.id">
           <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
             <!-- Raffle Header -->
-            <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
+            <div class="bg-gray-50 px-6 py-4">
               <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-4">
-                  <div class="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
+                  <!-- Klickbares Raffle Bild -->
+                  <Link 
+                    :href="raffleGroup.raffle.slug ? route('raffles.show', raffleGroup.raffle.slug) : '#'"
+                    class="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden hover:ring-2 hover:ring-blue-300 transition-all cursor-pointer"
+                  >
                     <img 
                       v-if="raffleGroup.raffle.image_url" 
                       :src="raffleGroup.raffle.image_url" 
                       :alt="raffleGroup.raffle.name" 
                       class="w-full h-full object-cover"
                     >
-                    <i v-else class="fa fa-gift text-gray-400"></i>
-                  </div>
+                    <font-awesome-icon v-else :icon="['fas', 'gift']" class="text-gray-400" />
+                  </Link>
                   <div>
-                    <h3 class="text-lg font-semibold text-gray-900">{{ raffleGroup.raffle.name }}</h3>
+                    <Link 
+                      :href="raffleGroup.raffle.slug ? route('raffles.show', raffleGroup.raffle.slug) : '#'"
+                      class="group cursor-pointer"
+                    >
+                      <h3 class="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                        {{ raffleGroup.raffle.name }}
+                        <font-awesome-icon :icon="['fas', 'external-link-alt']" class="ml-1 text-xs text-gray-400 group-hover:text-blue-400" />
+                      </h3>
+                    </Link>
                     <p class="text-sm text-gray-500">{{ raffleGroup.total_count }} Ticket(s)</p>
                   </div>
                 </div>
@@ -86,19 +98,57 @@
                     <span class="mx-2">•</span>
                     <span class="text-green-600 font-medium">{{ raffleGroup.opened_count }} geöffnet</span>
                   </div>
-                  <button 
-                    v-if="raffleGroup.unopened_count > 0"
-                    @click="openTicketsForRaffle(raffleGroup)"
-                    class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Tickets öffnen
-                  </button>
+                  <div class="flex items-center space-x-3">
+                    <!-- Tickets öffnen Button -->
+                    <button 
+                      v-if="raffleGroup.unopened_count > 0"
+                      @click="openTicketsForRaffle(raffleGroup)"
+                      class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      Tickets öffnen
+                    </button>
+                    <!-- Aufklapp Button - immer sichtbar -->
+                    <button 
+                      @click="toggleRaffle(raffleGroup.raffle.id)"
+                      class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-yellow-800 bg-yellow-100 hover:bg-yellow-200 hover:text-yellow-900 rounded-lg transition-colors border border-yellow-300 shadow-sm"
+                      :title="isRaffleExpanded(raffleGroup.raffle.id) ? 'Details ausblenden' : 'Details anzeigen'"
+                    >
+                      <span class="text-xs">
+                        {{ isRaffleExpanded(raffleGroup.raffle.id) ? 'Ausblenden' : 'Details' }}
+                      </span>
+                      <font-awesome-icon 
+                        :icon="['fas', isRaffleExpanded(raffleGroup.raffle.id) ? 'chevron-up' : 'chevron-down']"
+                        class="transition-transform duration-200"
+                      />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
 
+            <!-- Prize Groups Grid -->
+            <div 
+              v-if="raffleGroup.prize_groups && raffleGroup.prize_groups.length > 0 && isRaffleExpanded(raffleGroup.raffle.id)" 
+              class="px-6 py-4 border-t border-gray-200"
+            >
+              <h4 class="text-sm font-medium text-gray-700 mb-4 flex items-center">
+                <i class="fa fa-trophy text-yellow-500 mr-2"></i>
+                Gewonnene Preise ({{ raffleGroup.prize_groups.length }})
+              </h4>
+              <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                <PrizeGroupCard 
+                  v-for="(prizeGroup, index) in raffleGroup.prize_groups"
+                  :key="index"
+                  :prize-group="prizeGroup" 
+                  :pull-zone="bunny.pull_zone || ''"
+                />
+              </div>
+            </div>
+
             <!-- Tickets Grid -->
-            <div class="p-6">
+            <div v-if="isRaffleExpanded(raffleGroup.raffle.id)" 
+                 class="p-6 border-t border-gray-200"
+            >
               <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4">
                 <div 
                   v-for="ticket in raffleGroup.tickets" 
@@ -167,15 +217,23 @@
 <script setup>
 import MainLayout from '@/Layouts/MainLayout.vue'
 import TicketOpeningModal from '@/Components/TicketOpeningModal.vue'
-import { ref, defineProps } from 'vue'
+import PrizeGroupCard from '@/Components/PrizeGroupCard.vue'
+import { ref, defineProps, reactive } from 'vue'
+import { Link } from '@inertiajs/vue3'
+
+const route = window.route;
 
 const props = defineProps({
   ticketsByRaffle: Array,
   stats: Object,
+  bunny: { type: Object, default: () => ({}) }
 })
 
 const showOpeningModal = ref(false)
 const selectedRaffleTickets = ref([])
+
+// Reaktiver State für aufgeklappte Raffles
+const expandedRaffles = reactive({})
 
 const openTicketsForRaffle = (raffleGroup) => {
   const unopenedTickets = raffleGroup.tickets.filter(ticket => !ticket.is_opened)
@@ -183,6 +241,14 @@ const openTicketsForRaffle = (raffleGroup) => {
     selectedRaffleTickets.value = unopenedTickets
     showOpeningModal.value = true
   }
+}
+
+const toggleRaffle = (raffleId) => {
+  expandedRaffles[raffleId] = !expandedRaffles[raffleId]
+}
+
+const isRaffleExpanded = (raffleId) => {
+  return expandedRaffles[raffleId] ?? false // Standardmäßig zugeklappt
 }
 
 const closeOpeningModal = () => {

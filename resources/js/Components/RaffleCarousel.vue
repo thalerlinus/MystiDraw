@@ -16,10 +16,22 @@
 
     <!-- Bild Carousel -->
     <div class="relative h-64 overflow-hidden">
+      <!-- Sold Out Overlay -->
+      <div 
+        v-if="isSoldOut"
+        class="absolute inset-0 bg-black/60 flex items-center justify-center z-20 backdrop-blur-sm"
+      >
+        <div class="text-center text-white">
+          <div class="text-4xl font-bold mb-2 animate-pulse">AUSVERKAUFT</div>
+          <div class="text-lg opacity-90">Alle Lose sind vergriffen</div>
+        </div>
+      </div>
+      
       <div 
         v-if="raffle.items && raffle.items.length > 0"
         class="flex transition-transform duration-500 ease-in-out h-full"
         :style="{ transform: `translateX(-${currentImageIndex * 100}%)` }"
+        :class="{ 'filter grayscale': isSoldOut }"
       >
         <div 
           v-for="item in raffle.items" 
@@ -54,7 +66,18 @@
       </div>
 
       <!-- Fallback wenn keine Items -->
-      <div v-else class="w-full h-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
+      <div v-else class="w-full h-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center" :class="{ 'filter grayscale': isSoldOut }">
+        <!-- Sold Out Overlay für Fallback -->
+        <div 
+          v-if="isSoldOut"
+          class="absolute inset-0 bg-black/60 flex items-center justify-center z-20 backdrop-blur-sm"
+        >
+          <div class="text-center text-white">
+            <div class="text-4xl font-bold mb-2 animate-pulse">AUSVERKAUFT</div>
+            <div class="text-lg opacity-90">Alle Lose sind vergriffen</div>
+          </div>
+        </div>
+        
         <div class="text-slate-600 text-center">
           <svg class="w-16 h-16 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"></path>
@@ -108,30 +131,40 @@
         <div class="flex items-center space-x-2">
           <div 
             class="w-3 h-3 rounded-full"
-            :class="normalizedStatus === 'active' ? 'bg-green-500' : 'bg-gray-400'"
+            :class="getStatusClass()"
           ></div>
-          <span class="text-sm font-medium" :class="normalizedStatus === 'active' ? 'text-green-700' : 'text-gray-600'">
-            {{ getStatusText(normalizedStatus) }}
+          <span class="text-sm font-medium" :class="getStatusTextClass()">
+            {{ getStatusText() }}
           </span>
         </div>
         <div class="flex items-center gap-1 text-slate-600">
           <font-awesome-icon :icon="['fas', 'ticket']" class="text-xs" />
-          <span class="text-sm font-medium">{{ getRemainingTickets() }} verfügbar</span>
+          <span class="text-sm font-medium">{{ getTicketDisplayText() }}</span>
         </div>
       </div>
 
       <!-- Ende Datum -->
-      <div v-if="raffle.ends_at" class="text-sm text-gray-600 mb-4">
+      <div v-if="raffle.ends_at && !isSoldOut" class="text-sm text-gray-600 mb-4">
         <span class="font-medium">Läuft bis:</span> {{ formatDate(raffle.ends_at) }}
+      </div>
+
+      <!-- Sold Out Banner -->
+      <div v-if="isSoldOut" class="text-center mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+        <div class="text-red-800 font-bold text-lg">AUSVERKAUFT</div>
+        <div class="text-red-600 text-sm">Alle Lose wurden bereits verkauft</div>
       </div>
 
       <!-- Action Button -->
       <button
         @click="$emit('selectRaffle', raffle)"
-        :disabled="normalizedStatus !== 'active'"
-        class="w-full py-3 px-4 bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-slate-900 font-bold rounded-lg transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg hover:shadow-xl"
+        :disabled="!canPurchase"
+        :class="getButtonClass()"
       >
-        <span v-if="normalizedStatus === 'active'" class="flex items-center justify-center gap-2">
+        <span v-if="isSoldOut" class="flex items-center justify-center gap-2">
+          <font-awesome-icon :icon="['fas', 'ban']" />
+          Ausverkauft
+        </span>
+        <span v-else-if="normalizedStatus === 'active'" class="flex items-center justify-center gap-2">
           <font-awesome-icon :icon="['fas', 'ticket']" />
           Lose kaufen
         </span>
@@ -207,19 +240,68 @@ const normalizedStatus = computed(() => {
   return props.raffle.status;
 });
 
-const getStatusText = (status) => {
+// Computed für Sold Out Status
+const isSoldOut = computed(() => {
+  return props.raffle.is_sold_out || props.raffle.tickets_available === 0;
+});
+
+// Computed für Kauf-Berechtigung
+const canPurchase = computed(() => {
+  return normalizedStatus.value === 'active' && !isSoldOut.value;
+});
+
+const getStatusText = () => {
+  if (isSoldOut.value) return 'Ausverkauft';
+  
   const statusMap = {
     'active': 'Aktiv',
     'live': 'Aktiv',
     'draft': 'Entwurf',
     'ended': 'Beendet',
-    'paused': 'Pausiert'
+    'paused': 'Pausiert',
+    'scheduled': 'Geplant'
   };
-  return statusMap[status] || status;
+  return statusMap[normalizedStatus.value] || normalizedStatus.value;
+};
+
+const getStatusClass = () => {
+  if (isSoldOut.value) return 'bg-red-500';
+  if (normalizedStatus.value === 'active') return 'bg-green-500';
+  return 'bg-gray-400';
+};
+
+const getStatusTextClass = () => {
+  if (isSoldOut.value) return 'text-red-700 font-bold';
+  if (normalizedStatus.value === 'active') return 'text-green-700';
+  return 'text-gray-600';
+};
+
+const getButtonClass = () => {
+  const baseClass = 'w-full py-3 px-4 font-bold rounded-lg transition-all duration-300 shadow-lg';
+  
+  if (isSoldOut.value) {
+    return `${baseClass} bg-gradient-to-r from-red-400 to-red-500 text-white cursor-not-allowed opacity-75`;
+  } else if (canPurchase.value) {
+    return `${baseClass} bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-slate-900 transform hover:scale-[1.02] hover:shadow-xl`;
+  } else {
+    return `${baseClass} bg-gray-400 text-gray-700 cursor-not-allowed opacity-50`;
+  }
+};
+
+const getTicketDisplayText = () => {
+  if (typeof props.raffle.tickets_available === 'number') {
+    if (props.raffle.tickets_available === 0) {
+      return '0 verfügbar';
+    }
+    return `${props.raffle.tickets_available} verfügbar`;
+  }
+  
+  // Fallback für alte Datenstruktur
+  return `${getRemainingTickets()} verfügbar`;
 };
 
 const getRemainingTickets = () => {
-  // Berechne verfügbare Lose basierend auf den Items
+  // Berechne verfügbare Lose basierend auf den Items (Fallback)
   const totalTickets = props.raffle.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0;
   const soldTickets = props.raffle.tickets?.length || 0;
   return Math.max(0, totalTickets - soldTickets);

@@ -38,24 +38,75 @@ class TicketsController extends Controller
                     'raffle' => [
                         'id' => $raffle->id,
                         'name' => $raffle->name,
+                        'slug' => $raffle->slug,
                         'image_url' => $raffleImageUrl,
                     ],
                     'outcome' => $ticket->outcome ? [
                         'type' => $ticket->outcome->tier === 'none' ? 'none' : 'prize',
+                        'tier' => $ticket->outcome->tier,
+                        'is_last_one' => $ticket->outcome->is_last_one,
                         'product' => $ticket->outcome->raffleItem ? [
                             'name' => $ticket->outcome->raffleItem->product->name,
+                            'description' => $ticket->outcome->raffleItem->product->description,
                             'image_url' => CdnService::getProductImageUrl($ticket->outcome->raffleItem->product),
+                            'images' => $ticket->outcome->raffleItem->product->images->map(function ($image) {
+                                return [
+                                    'id' => $image->id,
+                                    'path' => $image->path,
+                                    'alt_text' => $image->alt_text,
+                                ];
+                            }),
                         ] : null
                     ] : null,
                 ];
             });
 
-        // Group tickets by raffle
+        // Group tickets by raffle and create prize groups
         $ticketsByRaffle = $tickets->groupBy('raffle.id')->map(function ($raffleTickets) {
             $raffle = $raffleTickets->first()['raffle'];
+            
+            // Create prize groups from won tickets (similar to TicketOpeningModal logic)
+            $wonTickets = $raffleTickets->filter(function ($ticket) {
+                return $ticket['is_opened'] && $ticket['outcome'] && $ticket['outcome']['type'] === 'prize';
+            });
+            
+            $prizeGroups = [];
+            $grouped = [];
+            
+            foreach ($wonTickets as $ticket) {
+                $outcome = $ticket['outcome'];
+                if ($outcome && $outcome['product']) {
+                    $productKey = $outcome['product']['name'] . '|' . $outcome['tier'] . '|' . ($outcome['is_last_one'] ? '1' : '0');
+                    
+                    if (!isset($grouped[$productKey])) {
+                        $grouped[$productKey] = [
+                            'product' => $outcome['product'],
+                            'tier' => $outcome['tier'],
+                            'count' => 1,
+                            'is_last_one' => $outcome['is_last_one'] || false,
+                            'tickets' => [[
+                                'serial' => $ticket['serial'],
+                                'ticket_id' => $ticket['id'],
+                                'is_last_one' => $outcome['is_last_one']
+                            ]]
+                        ];
+                    } else {
+                        $grouped[$productKey]['count']++;
+                        $grouped[$productKey]['tickets'][] = [
+                            'serial' => $ticket['serial'],
+                            'ticket_id' => $ticket['id'],
+                            'is_last_one' => $outcome['is_last_one']
+                        ];
+                    }
+                }
+            }
+            
+            $prizeGroups = array_values($grouped);
+            
             return [
                 'raffle' => $raffle,
                 'tickets' => $raffleTickets->values(),
+                'prize_groups' => $prizeGroups,
                 'total_count' => $raffleTickets->count(),
                 'unopened_count' => $raffleTickets->where('is_opened', false)->count(),
                 'opened_count' => $raffleTickets->where('is_opened', true)->count(),
@@ -74,6 +125,9 @@ class TicketsController extends Controller
         return Inertia::render('Tickets/Index', [
             'ticketsByRaffle' => $ticketsByRaffle,
             'stats' => $stats,
+            'bunny' => [
+                'pull_zone' => config('filesystems.disks.bunnycdn.pull_zone'),
+            ],
         ]);
     }
 }

@@ -89,7 +89,7 @@
                                 <font-awesome-icon :icon="['fas', 'ticket']" class="text-yellow-400 text-sm sm:text-base" />
                             </div>
                             <span class="text-white">
-                                <span class="font-bold text-yellow-400">{{ raffle.tickets_available }}</span> 
+                                <span class="font-bold text-yellow-400">{{ raffle.tickets_available }}</span>
                                 <span class="hidden sm:inline">von {{ raffle.tickets_total }} verfügbar</span>
                                 <span class="sm:hidden">/ {{ raffle.tickets_total }}</span>
                             </span>
@@ -111,7 +111,7 @@
                     <div class="flex justify-center">
                         <button
                             v-if="raffle.status === 'live' && raffle.tickets_available > 0"
-                            @click="openPurchaseModal"
+                            @click="openPurchaseModal(1)"
                             class="group relative px-8 py-3 sm:px-12 sm:py-4 md:px-16 md:py-5 bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-400 hover:from-yellow-300 hover:via-yellow-400 hover:to-yellow-300 text-slate-900 font-black text-lg sm:text-xl rounded-full transition-all duration-500 transform hover:scale-110 shadow-2xl hover:shadow-yellow-400/25 border-2 border-yellow-300"
                         >
                             <div class="absolute inset-0 bg-gradient-to-r from-yellow-300 to-yellow-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -273,7 +273,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8 pt-8">
                             <!-- Base Price Card -->
                             <div 
-                                @click="openPurchaseModal"
+                                @click="openPurchaseModal(1)"
                                 class="group bg-white rounded-2xl shadow-xl p-4 sm:p-6 md:p-8 border-2 border-slate-200 hover:border-yellow-300 transition-all duration-500 hover:shadow-2xl hover:-translate-y-1 cursor-pointer"
                             >
                                 <div class="text-center">
@@ -297,7 +297,7 @@
                             <div 
                                 v-for="tier in raffle.pricing_tiers" 
                                 :key="tier.min_qty"
-                                @click="openPurchaseModal"
+                                @click="openPurchaseModal(tier.min_qty)"
                                 class="group relative bg-gradient-to-br from-yellow-50 via-white to-yellow-100 rounded-2xl shadow-xl p-4 sm:p-6 md:p-8 border-2 border-yellow-300 hover:border-yellow-400 transition-all duration-500 hover:shadow-2xl hover:-translate-y-1 overflow-visible cursor-pointer"
                             >
                                 <!-- Best Value Badge -->
@@ -484,7 +484,7 @@
                         <div class="space-y-4 sm:space-y-6">
                             <button
                                 v-if="raffle.status === 'live' && raffle.tickets_available > 0"
-                                @click="openPurchaseModal"
+                                @click="openPurchaseModal(1)"
                                 class="group relative px-8 py-3 sm:px-12 sm:py-4 md:px-16 md:py-5 bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-400 hover:from-yellow-300 hover:via-yellow-400 hover:to-yellow-300 text-slate-900 font-black text-lg sm:text-xl rounded-full transition-all duration-500 transform hover:scale-110 shadow-2xl hover:shadow-yellow-400/25 border-2 border-yellow-300"
                             >
                                 <div class="absolute inset-0 bg-gradient-to-r from-yellow-300 to-yellow-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -524,6 +524,7 @@
     <TicketPurchaseModal
         :raffle="raffle"
         :is-open="showPurchaseModal"
+        :initial-quantity="selectedQuantity"
         @close="closePurchaseModal"
         @purchase="handlePurchase"
     />
@@ -550,6 +551,7 @@ const props = defineProps({
 const currentPrizeIndex = ref(0);
 const selectedTier = ref('all');
 const showPurchaseModal = ref(false);
+const selectedQuantity = ref(1);
 
 // Auto-rotate prize carousel
 let prizeInterval;
@@ -601,6 +603,19 @@ const filteredItems = computed(() => {
     });
 });
 
+const availableTickets = computed(() => {
+    const totalTickets = props.raffle.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0;
+    const soldTickets = props.raffle.tickets?.length || 0;
+    const pendingTickets = props.raffle.pending_quantity || 0;
+    console.log('[Lose-Berechnung]', {
+        totalTickets,
+        soldTickets,
+        pendingTickets,
+        result: Math.max(0, totalTickets - soldTickets - pendingTickets)
+    });
+    return Math.max(0, totalTickets - soldTickets - pendingTickets);
+});
+
 // Methods
 const formatPrice = (price) => {
     return new Intl.NumberFormat('de-DE', {
@@ -649,7 +664,8 @@ const scrollToTicketPurchase = () => {
     }
 };
 
-const openPurchaseModal = () => {
+const openPurchaseModal = (qty = 1) => {
+    selectedQuantity.value = qty;
     showPurchaseModal.value = true;
 };
 

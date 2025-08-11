@@ -80,6 +80,16 @@ class RaffleBrowseController extends Controller
         $raffles = $rafflesQuery->paginate(12)->withQueryString();
 
         $rafflesTransformed = $raffles->through(function($r) {
+            // Berechne verfügbare Tickets für dieses Raffle
+            $totalTickets = $r->items->sum('quantity_total');
+            $soldTickets = $r->tickets()->count();
+            $pendingTickets = \DB::table('order_items')
+                ->join('orders','orders.id','=','order_items.order_id')
+                ->where('order_items.raffle_id', $r->id)
+                ->where('orders.status', 'pending')
+                ->sum('order_items.quantity');
+            $availableTickets = max(0, $totalTickets - $soldTickets - $pendingTickets);
+            
             return [
                 'id' => $r->id,
                 'name' => $r->name,
@@ -89,6 +99,11 @@ class RaffleBrowseController extends Controller
                 'ends_at' => $r->ends_at,
                 'base_ticket_price' => $r->base_ticket_price,
                 'currency' => $r->currency,
+                'tickets_total' => $totalTickets,
+                'tickets_sold' => $soldTickets,
+                'tickets_pending' => $pendingTickets,
+                'tickets_available' => $availableTickets,
+                'is_sold_out' => $availableTickets <= 0,
                 'category' => $r->category ? [
                     'name' => $r->category->name,
                     'slug' => $r->category->slug,
@@ -144,7 +159,12 @@ class RaffleBrowseController extends Controller
         // Berechne verfügbare Tickets
         $totalTickets = $raffle->items->sum('quantity_total');
         $soldTickets = $raffle->tickets()->count();
-        $availableTickets = max(0, $totalTickets - $soldTickets);
+            $pendingTickets = \DB::table('order_items')
+                ->join('orders','orders.id','=','order_items.order_id')
+                ->where('order_items.raffle_id', $raffle->id)
+                ->where('orders.status', 'pending')
+                ->sum('order_items.quantity');
+            $availableTickets = max(0, $totalTickets - $soldTickets - $pendingTickets);
 
         // Transformiere die Daten für die Frontend
         $raffleData = [
@@ -195,6 +215,7 @@ class RaffleBrowseController extends Controller
             }),
             'tickets_total' => $totalTickets,
             'tickets_sold' => $soldTickets,
+                'pending_quantity' => $pendingTickets,
             'tickets_available' => $availableTickets,
         ];
 

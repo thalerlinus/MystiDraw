@@ -8,7 +8,7 @@
 
     <div class="max-w-7xl mx-auto px-4 py-8">
       <!-- Statistics -->
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <div class="flex items-center">
             <div class="flex-shrink-0">
@@ -17,18 +17,6 @@
             <div class="ml-4">
               <p class="text-sm font-medium text-gray-500">Gesamte Gewinne</p>
               <p class="text-2xl font-bold text-gray-900">{{ stats.total_prizes }}</p>
-            </div>
-          </div>
-        </div>
-
-        <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <div class="flex items-center">
-            <div class="flex-shrink-0">
-              <i class="fa fa-eur text-2xl text-green-500"></i>
-            </div>
-            <div class="ml-4">
-              <p class="text-sm font-medium text-gray-500">Gesamtwert</p>
-              <p class="text-2xl font-bold text-gray-900">{{ formatPrice(stats.total_value) }}</p>
             </div>
           </div>
         </div>
@@ -66,55 +54,13 @@
             <i class="fa fa-clock text-orange-500"></i>
             Wartend auf Versand ({{ inventory.assigned.length }})
           </h3>
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            <div 
-              v-for="item in inventory.assigned" 
-              :key="item.id"
-              class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
-            >
-              <div class="aspect-square bg-gray-100 flex items-center justify-center">
-                <img 
-                  v-if="item.product.image_url" 
-                  :src="item.product.image_url" 
-                  :alt="item.product.name" 
-                  class="w-full h-full object-cover"
-                >
-                <div v-else class="text-gray-400 text-3xl">
-                  <i class="fa fa-gift"></i>
-                </div>
-              </div>
-              
-              <div class="p-4 space-y-3">
-                <div>
-                  <h4 class="font-medium text-gray-900 line-clamp-2">{{ item.product.name }}</h4>
-                  <p class="text-sm text-gray-500 mt-1">{{ item.raffle_name }}</p>
-                </div>
-                
-                <div class="flex items-center justify-between text-sm">
-                  <span class="text-gray-500 flex items-center gap-1">
-                    <i class="fa fa-ticket"></i>
-                    #{{ item.ticket_serial }}
-                  </span>
-                  <span class="font-semibold text-green-600">
-                    {{ formatPrice(item.product.value) }}
-                  </span>
-                </div>
-                
-                <div class="flex items-center justify-between">
-                  <span class="px-2 py-1 rounded-full text-xs font-bold text-white" 
-                        :class="`tier-${item.tier.toLowerCase()}`">
-                    Tier {{ item.tier.toUpperCase() }}
-                  </span>
-                  <span class="px-2 py-1 bg-orange-100 text-orange-800 text-xs font-medium rounded-full">
-                    Wartend
-                  </span>
-                </div>
-                
-                <p class="text-xs text-gray-500">
-                  Gewonnen am {{ formatDate(item.won_at) }}
-                </p>
-              </div>
-            </div>
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            <PrizeGroupCard 
+              v-for="(prizeGroup, index) in inventory.assigned"
+              :key="index"
+              :prize-group="prizeGroup" 
+              :pull-zone="bunny.pull_zone || ''"
+            />
           </div>
         </div>
 
@@ -124,55 +70,13 @@
             <i class="fa fa-shipping-fast text-blue-500"></i>
             Versendet ({{ inventory.shipped.length }})
           </h3>
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            <div 
-              v-for="item in inventory.shipped" 
-              :key="item.id"
-              class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
-            >
-              <div class="aspect-square bg-gray-100 flex items-center justify-center">
-                <img 
-                  v-if="item.product.image_url" 
-                  :src="item.product.image_url" 
-                  :alt="item.product.name" 
-                  class="w-full h-full object-cover"
-                >
-                <div v-else class="text-gray-400 text-3xl">
-                  <i class="fa fa-gift"></i>
-                </div>
-              </div>
-              
-              <div class="p-4 space-y-3">
-                <div>
-                  <h4 class="font-medium text-gray-900 line-clamp-2">{{ item.product.name }}</h4>
-                  <p class="text-sm text-gray-500 mt-1">{{ item.raffle_name }}</p>
-                </div>
-                
-                <div class="flex items-center justify-between text-sm">
-                  <span class="text-gray-500 flex items-center gap-1">
-                    <i class="fa fa-ticket"></i>
-                    #{{ item.ticket_serial }}
-                  </span>
-                  <span class="font-semibold text-green-600">
-                    {{ formatPrice(item.product.value) }}
-                  </span>
-                </div>
-                
-                <div class="flex items-center justify-between">
-                  <span class="px-2 py-1 rounded-full text-xs font-bold text-white" 
-                        :class="`tier-${item.tier.toLowerCase()}`">
-                    Tier {{ item.tier.toUpperCase() }}
-                  </span>
-                  <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
-                    Versendet
-                  </span>
-                </div>
-                
-                <p class="text-xs text-gray-500">
-                  Gewonnen am {{ formatDate(item.won_at) }}
-                </p>
-              </div>
-            </div>
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            <PrizeGroupCard 
+              v-for="(prizeGroup, index) in inventory.shipped"
+              :key="index"
+              :prize-group="prizeGroup" 
+              :pull-zone="bunny.pull_zone || ''"
+            />
           </div>
         </div>
 
@@ -182,55 +86,13 @@
             <i class="fa fa-check-circle text-green-500"></i>
             Zugestellt ({{ inventory.delivered.length }})
           </h3>
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            <div 
-              v-for="item in inventory.delivered" 
-              :key="item.id"
-              class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow opacity-75"
-            >
-              <div class="aspect-square bg-gray-100 flex items-center justify-center">
-                <img 
-                  v-if="item.product.image_url" 
-                  :src="item.product.image_url" 
-                  :alt="item.product.name" 
-                  class="w-full h-full object-cover"
-                >
-                <div v-else class="text-gray-400 text-3xl">
-                  <i class="fa fa-gift"></i>
-                </div>
-              </div>
-              
-              <div class="p-4 space-y-3">
-                <div>
-                  <h4 class="font-medium text-gray-900 line-clamp-2">{{ item.product.name }}</h4>
-                  <p class="text-sm text-gray-500 mt-1">{{ item.raffle_name }}</p>
-                </div>
-                
-                <div class="flex items-center justify-between text-sm">
-                  <span class="text-gray-500 flex items-center gap-1">
-                    <i class="fa fa-ticket"></i>
-                    #{{ item.ticket_serial }}
-                  </span>
-                  <span class="font-semibold text-green-600">
-                    {{ formatPrice(item.product.value) }}
-                  </span>
-                </div>
-                
-                <div class="flex items-center justify-between">
-                  <span class="px-2 py-1 rounded-full text-xs font-bold text-white" 
-                        :class="`tier-${item.tier.toLowerCase()}`">
-                    Tier {{ item.tier.toUpperCase() }}
-                  </span>
-                  <span class="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                    Zugestellt
-                  </span>
-                </div>
-                
-                <p class="text-xs text-gray-500">
-                  Gewonnen am {{ formatDate(item.won_at) }}
-                </p>
-              </div>
-            </div>
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            <PrizeGroupCard 
+              v-for="(prizeGroup, index) in inventory.delivered"
+              :key="index"
+              :prize-group="prizeGroup" 
+              :pull-zone="bunny.pull_zone || ''"
+            />
           </div>
         </div>
 
@@ -253,11 +115,13 @@
 
 <script setup>
 import MainLayout from '@/Layouts/MainLayout.vue'
+import PrizeGroupCard from '@/Components/PrizeGroupCard.vue'
 import { defineProps } from 'vue'
 
 const props = defineProps({
   inventory: Object,
   stats: Object,
+  bunny: { type: Object, default: () => ({}) }
 })
 
 const formatPrice = (amount) => {

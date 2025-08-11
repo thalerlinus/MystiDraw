@@ -41,14 +41,13 @@
     </div>
 
     <!-- Controls -->
-    <div class="slot-controls" v-if="!isAnimating">
+    <div class="slot-controls" v-if="!isAnimating && !hasResult">
       <button 
         @click="startSlotAnimation"
         class="slot-spin-btn"
-        :disabled="hasResult"
       >
         <i class="fa fa-play"></i>
-        {{ hasResult ? 'Ergebnis anzeigen' : 'Drehen!' }}
+        Drehen!
       </button>
     </div>
 
@@ -198,8 +197,9 @@ defineExpose({ reset })
   border: 4px solid #eab308;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   background-image: 
-    radial-gradient(circle at 20% 20%, rgba(255, 215, 0, 0.1) 0%, transparent 50%),
-    radial-gradient(circle at 80% 80%, rgba(255, 215, 0, 0.1) 0%, transparent 50%);
+    radial-gradient(circle at 20% 20%, rgba(255, 215, 0, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(255, 215, 0, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(255, 215, 0, 0.02) 0%, transparent 70%);
 }
 
 .slot-pointer {
@@ -353,15 +353,6 @@ defineExpose({ reset })
 .slot-spin-btn:hover {
   background: linear-gradient(to right, #fbbf24, #eab308);
   transform: scale(1.05);
-}
-
-.slot-spin-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.slot-spin-btn:disabled:hover {
-  transform: scale(1);
 }
 
 .slot-loading {

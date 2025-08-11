@@ -9,6 +9,11 @@ class Order extends Model
 {
     use HasFactory;
 
+    // Einheitliche Status-Konstanten
+    public const STATUS_PENDING = 'pending';
+    public const STATUS_PAID = 'paid';
+    public const STATUS_CANCELLED = 'cancelled';
+
     protected $fillable = [
         'user_id','status','total','currency','provider_fee','paid_at','meta','shipping_address_id','billing_address_id'
     ];

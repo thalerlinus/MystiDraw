@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Ticket;
 use App\Models\TicketOutcome;
 use App\Models\RaffleItem;
+use App\Models\Raffle;
 use App\Services\CdnService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +17,7 @@ class TicketOpeningController extends Controller
     {
         // Verify ownership
         if ($ticket->user_id !== Auth::id()) {
-            abort(403, 'Not your ticket');
+            abort(403, 'Dieses Ticket gehört dir nicht.');
         }
 
         // Get all products for slot animation
@@ -64,7 +65,7 @@ class TicketOpeningController extends Controller
         $ticketIds = $request->input('ticket_ids', []);
         
         if (empty($ticketIds)) {
-            return response()->json(['success' => false, 'error' => 'No tickets provided']);
+            return response()->json(['success' => false, 'error' => 'Keine Ticket-IDs übermittelt']);
         }
 
         $tickets = Ticket::whereIn('id', $ticketIds)
@@ -129,72 +130,112 @@ class TicketOpeningController extends Controller
     private function generateOutcome(Ticket $ticket)
     {
         return DB::transaction(function () use ($ticket) {
-            // Get available raffle items with remaining quantities
-            $raffleItems = RaffleItem::where('raffle_id', $ticket->raffle_id)
-                ->where('quantity_awarded', '<', DB::raw('quantity_total'))
-                ->get();
+            // Sperre Raffle für konsistente Sicht (verhindert Race bei letztem Ticket / Last-One Preis)
+            $raffle = Raffle::where('id', $ticket->raffle_id)->lockForUpdate()->first();
+
+            // Ermitteln ob dieses Ticket das "letzte" Ticket der Verlosung ist
+            // Annahmen:
+            //  - tickets_total enthält die geplante Gesamtzahl
+            //  - Ein Ticket hat eine eindeutige serial, höchste serial == zuletzt verkauft
+            //  - Alle Tickets existieren (Verkauf abgeschlossen) wenn count == tickets_total
+            $ticketCount = Ticket::where('raffle_id', $raffle->id)->count();
+            $maxSerial = Ticket::where('raffle_id', $raffle->id)->max('serial');
+            $isLastTicket = ($raffle->tickets_total > 0)
+                && ($ticketCount === (int)$raffle->tickets_total)
+                && ($ticket->serial == $maxSerial);
+
+            // Basis-Query verfügbare Items
+            // Behandle NULL bei quantity_awarded als 0, damit neue Datensätze ohne Default nicht herausfallen
+            $baseQuery = RaffleItem::where('raffle_id', $raffle->id)
+                ->whereRaw('COALESCE(quantity_awarded, 0) < COALESCE(quantity_total, 0)');
+
+            // Zähle verbleibende Einheiten getrennt nach Last-One und Normal
+            $remainingLastOne = (clone $baseQuery)
+                ->where('is_last_one', true)
+                ->get()
+                ->sum(fn($i) => (int)$i->quantity_total - (int)($i->quantity_awarded ?? 0));
+
+            $remainingNormal = (clone $baseQuery)
+                ->where(function ($q) {
+                    $q->where('is_last_one', false)->orWhereNull('is_last_one');
+                })
+                ->get()
+                ->sum(fn($i) => (int)$i->quantity_total - (int)($i->quantity_awarded ?? 0));
+
+            // Wie viele Tickets in dieser Raffle haben noch kein Outcome?
+            // Falls nur noch Last-One-Einheiten übrig sind, müssen wir aus ihnen wählen
+            $onlyLastOneLeft = ($remainingLastOne > 0) && ($remainingNormal === 0);
+
+            if ($isLastTicket || $onlyLastOneLeft) {
+                // Bevorzugt Last-One Items, wenn es das letzte Ticket ist ODER nur noch Last-One übrig sind
+                $lastOneItems = (clone $baseQuery)->where('is_last_one', true)->get();
+                if ($lastOneItems->isNotEmpty()) {
+                    $raffleItems = $lastOneItems;
+                } else {
+                    // Fallback auf normale Items
+                    $raffleItems = (clone $baseQuery)
+                        ->where(function ($q) {
+                            $q->where('is_last_one', false)->orWhereNull('is_last_one');
+                        })
+                        ->get();
+                }
+            } else {
+                // Nicht letztes Ticket und es gibt noch normale Einheiten: Last-One ausschließen
+                $raffleItems = (clone $baseQuery)
+                    ->where(function ($q) {
+                        $q->where('is_last_one', false)->orWhereNull('is_last_one');
+                    })
+                    ->get();
+            }
 
             if ($raffleItems->isEmpty()) {
-                // No prizes left, create empty outcome
-                return TicketOutcome::create([
-                    'ticket_id' => $ticket->id,
-                    'tier' => 'none',
-                    'decided_by' => 'instant',
-                    'rng_seed' => rand(1000, 9999),
-                    'rng_roll' => 0,
-                    'status' => 'assigned',
-                    'assigned_at' => now()
+                \Log::error('Keine auswählbaren RaffleItems vorhanden (Pre-Throw)', [
+                    'raffle_id' => $raffle->id,
+                    'is_last_ticket' => $isLastTicket,
+                    'remaining_last_one' => $remainingLastOne,
+                    'remaining_normal' => $remainingNormal,
                 ]);
+                // Laut Geschäftsregel: darf nicht passieren, da jedes Ticket einem Item entspricht.
+                // Wir werfen eine Exception, damit das Problem sichtbar wird statt stiller falscher Zuweisung.
+                throw new \LogicException('Keine auswählbaren RaffleItems vorhanden (Invariant verletzt).');
             }
 
-            // Calculate total remaining prizes across all tiers
-            $totalRemaining = $raffleItems->sum(function($item) {
-                return $item->quantity_total - $item->quantity_awarded;
-            });
-
+            // Gesamt verbleibende Einheiten für gewichtete Auswahl
+            $totalRemaining = $raffleItems->sum(fn($item) => (int)$item->quantity_total - (int)($item->quantity_awarded ?? 0));
             if ($totalRemaining <= 0) {
-                // Edge case: no prizes remaining
-                return TicketOutcome::create([
-                    'ticket_id' => $ticket->id,
-                    'tier' => 'none',
-                    'decided_by' => 'instant',
-                    'rng_seed' => rand(1000, 9999),
-                    'rng_roll' => 0,
-                    'status' => 'assigned',
-                    'assigned_at' => now()
-                ]);
+                throw new \LogicException('totalRemaining == 0 trotz nicht leerer Item-Liste (Invariant verletzt).');
             }
 
-            // Random selection based on remaining quantities
-            $randomNumber = rand(1, $totalRemaining);
+            $randomNumber = random_int(1, $totalRemaining);
             $currentCount = 0;
             $selectedItem = null;
-
             foreach ($raffleItems as $item) {
-                $remainingForThisItem = $item->quantity_total - $item->quantity_awarded;
-                $currentCount += $remainingForThisItem;
-                
+                $remaining = (int)$item->quantity_total - (int)($item->quantity_awarded ?? 0);
+                $currentCount += $remaining;
                 if ($randomNumber <= $currentCount) {
                     $selectedItem = $item;
                     break;
                 }
             }
-
             if (!$selectedItem) {
                 $selectedItem = $raffleItems->first();
             }
 
-            // Update awarded quantity
-            $selectedItem->increment('quantity_awarded');
+            // Vergabe mit atomischer Schutz-Bedingung (verhindert Oversell bei Parallelität)
+            $updated = RaffleItem::where('id', $selectedItem->id)
+                ->whereRaw('COALESCE(quantity_awarded, 0) < COALESCE(quantity_total, 0)')
+                ->update(['quantity_awarded' => DB::raw('COALESCE(quantity_awarded, 0) + 1')]);
+            if ($updated === 0) {
+                throw new \RuntimeException('Vergabe des Items wegen Parallelität fehlgeschlagen. Bitte erneut versuchen.');
+            }
 
-            // Create outcome
             $outcome = TicketOutcome::create([
                 'ticket_id' => $ticket->id,
                 'raffle_item_id' => $selectedItem->id,
                 'product_id' => $selectedItem->product_id,
                 'tier' => $selectedItem->tier,
                 'decided_by' => 'instant',
-                'rng_seed' => rand(1000, 9999),
+                'rng_seed' => (string) random_int(1000, 9999),
                 'rng_roll' => round($randomNumber / $totalRemaining, 6),
                 'status' => 'assigned',
                 'assigned_at' => now()
@@ -209,21 +250,18 @@ class TicketOpeningController extends Controller
         if (!$outcome) {
             return null;
         }
-
-        if ($outcome->tier === 'none' || !$outcome->raffleItem) {
-            return [
-                'type' => 'none',
-                'message' => 'Leider nichts gewonnen',
-                'tier' => 'none'
-            ];
+        // Invariante: Outcome hat immer ein raffleItem und gültigen Tier (A-E)
+        if (!$outcome->raffleItem || !$outcome->raffleItem->product) {
+            throw new \LogicException('Outcome ohne verknüpftes RaffleItem/Product (Invariant verletzt).');
         }
 
         $product = $outcome->raffleItem->product;
-        $image = $product->images->first();
+        $isLastOne = $outcome->raffleItem->is_last_one;
 
         return [
             'type' => 'prize',
             'tier' => $outcome->tier,
+            'is_last_one' => $isLastOne,
             'product' => [
                 'id' => $product->id,
                 'name' => $product->name,
@@ -231,7 +269,7 @@ class TicketOpeningController extends Controller
                 'image_url' => CdnService::getProductImageUrl($product),
                 'value' => $product->price
             ],
-            'message' => "Gewonnen: {$product->name}!"
+            'message' => $isLastOne ? "🎉 LETZTES TICKET! Gewonnen: {$product->name}!" : "Gewonnen: {$product->name}!"
         ];
     }
 }
