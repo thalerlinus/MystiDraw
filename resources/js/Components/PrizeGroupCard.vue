@@ -89,6 +89,14 @@
                     </span>
                 </div>
 
+                <!-- Image Count Badge -->
+                <div v-if="hasMultipleImages" class="absolute bottom-1 left-1 z-10">
+                    <span class="px-1.5 py-0.5 bg-black/70 text-white text-xs font-medium rounded-full border border-white/50">
+                        <font-awesome-icon :icon="['fas', 'images']" class="mr-1" />
+                        {{ prizeGroup.product.images.length }}
+                    </span>
+                </div>
+
                 <!-- Last One Badge -->
                 <div v-if="prizeGroup.is_last_one" class="absolute bottom-1 right-1 z-10">
                     <span class="px-1.5 py-0.5 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold rounded-full animate-pulse border border-white">

@@ -194,6 +194,7 @@ class RaffleBrowseController extends Controller
                     'id' => $item->id,
                     'tier' => $item->tier,
                     'quantity_total' => $item->quantity_total,
+                    'quantity' => $item->quantity_total - $item->quantity_awarded,
                     'quantity_available' => $item->quantity_total - $item->quantity_awarded,
                     'weight' => $item->weight,
                     'is_last_one' => $item->is_last_one,

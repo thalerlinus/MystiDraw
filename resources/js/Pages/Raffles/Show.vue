@@ -203,6 +203,16 @@
                                             {{ item.product.description }}
                                         </p>
                                         
+                                        <!-- Anzahl der verfügbaren Gewinne -->
+                                        <div class="flex items-center justify-center mb-4">
+                                            <div class="bg-slate-100 px-4 py-2 rounded-full border border-slate-200">
+                                                <span class="text-sm sm:text-base font-semibold text-slate-700 flex items-center">
+                                                    <font-awesome-icon :icon="['fas', 'trophy']" class="mr-2 text-slate-500" />
+                                                    {{ item.quantity }}x zu gewinnen
+                                                </span>
+                                            </div>
+                                        </div>
+                                        
                                         <!-- Last One Bonus Info -->
                                         <div v-if="item.is_last_one" class="mt-3 sm:mt-4 p-2 sm:p-3 bg-red-50 border border-red-200 rounded-lg">
                                             <div class="flex items-center justify-center text-red-700 text-sm sm:text-base">
@@ -445,6 +455,16 @@
                                 <p v-if="item.product?.description" class="text-gray-600 text-xs sm:text-sm mb-2 sm:mb-3 line-clamp-2">
                                     {{ item.product.description }}
                                 </p>
+                                
+                                <!-- Anzahl der verfügbaren Gewinne -->
+                                <div class="flex items-center justify-center mb-2">
+                                    <div class="bg-slate-100 px-2 py-1 rounded-full">
+                                        <span class="text-xs sm:text-sm font-semibold text-slate-700 flex items-center">
+                                            <font-awesome-icon :icon="['fas', 'trophy']" class="mr-1 text-slate-500" />
+                                            {{ item.quantity }}x verfügbar
+                                        </span>
+                                    </div>
+                                </div>
                                 
                                 <!-- Last One Bonus Info -->
                                 <div v-if="item.is_last_one" class="mt-2 sm:mt-3 p-1.5 sm:p-2 bg-red-50 border border-red-200 rounded-lg">
