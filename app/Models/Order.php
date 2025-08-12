@@ -43,6 +43,11 @@ class Order extends Model
         return $this->hasMany(Payment::class);
     }
 
+    public function tickets()
+    {
+        return $this->hasMany(Ticket::class);
+    }
+
     public function shippingAddress()
     {
         return $this->belongsTo(Address::class, 'shipping_address_id');

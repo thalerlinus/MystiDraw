@@ -39,6 +39,9 @@ Route::middleware('auth')->group(function () {
 // Stripe webhook (no auth, CSRF exempt because Stripe signs it)
 Route::post('/stripe/webhook', [RafflePurchaseController::class,'webhook'])->name('stripe.webhook');
 
+// Alternative: Falls Stripe auf root "/" konfiguriert ist
+// Route::post('/', [RafflePurchaseController::class,'webhook'])->name('stripe.webhook.root');
+
 require __DIR__.'/auth.php';
 
 // Admin area
