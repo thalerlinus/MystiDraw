@@ -15,6 +15,53 @@
         </div>
       </div>
 
+
+      <!-- Statistics -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+                <div class="bg-white rounded-lg shadow-sm p-4 sm:p-6 border border-gray-200">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <div class="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                <font-awesome-icon :icon="['fas', 'trophy']" class="text-lg sm:text-xl text-yellow-600" />
+              </div>
+            </div>
+            <div class="ml-3 sm:ml-4 min-w-0">
+              <p class="text-xs sm:text-sm font-medium text-gray-500 truncate">Gesamte Gewinne</p>
+              <p class="text-xl sm:text-2xl font-bold text-gray-900">{{ stats.total_prizes }}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-sm p-4 sm:p-6 border border-gray-200">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <div class="w-10 h-10 sm:w-12 sm:h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                <font-awesome-icon :icon="['fas', 'clock']" class="text-lg sm:text-xl text-orange-600" />
+              </div>
+            </div>
+            <div class="ml-3 sm:ml-4 min-w-0">
+              <p class="text-xs sm:text-sm font-medium text-gray-500 truncate">Bereit zum Versand</p>
+              <p class="text-xl sm:text-2xl font-bold text-gray-900">{{ stats.pending_shipment }}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-sm p-4 sm:p-6 border border-gray-200">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <div class="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <font-awesome-icon :icon="['fas', 'shipping-fast']" class="text-lg sm:text-xl text-blue-600" />
+              </div>
+            </div>
+            <div class="ml-3 sm:ml-4 min-w-0">
+              <p class="text-xs sm:text-sm font-medium text-gray-500 truncate">Versendet</p>
+              <p class="text-xl sm:text-2xl font-bold text-gray-900">{{ stats.shipped_items }}</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
   <!-- Shipping Info Banner -->
       <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 sm:p-6 mb-6 sm:mb-8">
         <div class="flex items-start space-x-3 sm:space-x-4">
@@ -117,51 +164,6 @@
         </div>
       </div>
 
-      <!-- Statistics -->
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
-                <div class="bg-white rounded-lg shadow-sm p-4 sm:p-6 border border-gray-200">
-          <div class="flex items-center">
-            <div class="flex-shrink-0">
-              <div class="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <font-awesome-icon :icon="['fas', 'trophy']" class="text-lg sm:text-xl text-yellow-600" />
-              </div>
-            </div>
-            <div class="ml-3 sm:ml-4 min-w-0">
-              <p class="text-xs sm:text-sm font-medium text-gray-500 truncate">Gesamte Gewinne</p>
-              <p class="text-xl sm:text-2xl font-bold text-gray-900">{{ stats.total_prizes }}</p>
-            </div>
-          </div>
-        </div>
-
-        <div class="bg-white rounded-lg shadow-sm p-4 sm:p-6 border border-gray-200">
-          <div class="flex items-center">
-            <div class="flex-shrink-0">
-              <div class="w-10 h-10 sm:w-12 sm:h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                <font-awesome-icon :icon="['fas', 'clock']" class="text-lg sm:text-xl text-orange-600" />
-              </div>
-            </div>
-            <div class="ml-3 sm:ml-4 min-w-0">
-              <p class="text-xs sm:text-sm font-medium text-gray-500 truncate">Bereit zum Versand</p>
-              <p class="text-xl sm:text-2xl font-bold text-gray-900">{{ stats.pending_shipment }}</p>
-            </div>
-          </div>
-        </div>
-
-        <div class="bg-white rounded-lg shadow-sm p-4 sm:p-6 border border-gray-200">
-          <div class="flex items-center">
-            <div class="flex-shrink-0">
-              <div class="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <font-awesome-icon :icon="['fas', 'shipping-fast']" class="text-lg sm:text-xl text-blue-600" />
-              </div>
-            </div>
-            <div class="ml-3 sm:ml-4 min-w-0">
-              <p class="text-xs sm:text-sm font-medium text-gray-500 truncate">Versendet</p>
-              <p class="text-xl sm:text-2xl font-bold text-gray-900">{{ stats.shipped_items }}</p>
-            </div>
-          </div>
-        </div>
-
-      </div>
 
       <!-- Inventory Sections -->
       <div class="space-y-6 sm:space-y-8">

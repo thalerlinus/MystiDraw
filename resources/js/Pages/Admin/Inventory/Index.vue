@@ -7,6 +7,7 @@ const items = computed(()=> page.props.items);
 const filters = computed(()=> page.props.filters || {});
 const statusOptions = [
   { value: '', label: 'Alle Status'},
+  { value: 'assigned', label: 'Assigned'},
   { value: 'owned', label: 'Owned'},
   { value: 'reserved_for_shipping', label: 'Reserviert Versand'},
   { value: 'shipped', label: 'Shipped'},

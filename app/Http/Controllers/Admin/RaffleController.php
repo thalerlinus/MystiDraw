@@ -19,7 +19,39 @@ class RaffleController extends Controller
         if ($status = $request->get('status')) {
             $query->where('status', $status);
         }
-        $raffles = $query->latest()->paginate(20)->withQueryString();
+        $raffles = $query->latest()->with(['items'])->paginate(20)->withQueryString();
+
+        // Map additional stats per raffle (avoid heavy N+1 by aggregated subqueries where reasonable)
+        $raffles->getCollection()->transform(function($raffle){
+            // Tickets sold = tickets count
+            $ticketsSold = $raffle->tickets()->count();
+            $totalCapacity = $raffle->items->sum(fn($i)=> $i->quantity_total);
+            $awardedTotal = $raffle->items->sum(fn($i)=> (int)($i->quantity_awarded ?? 0));
+            $remainingPrizes = $totalCapacity - $awardedTotal;
+            $percentPrizesAwarded = $totalCapacity > 0 ? round($awardedTotal / $totalCapacity * 100,1) : 0;
+            // Prize distribution per tier
+            $byTier = [];
+            foreach($raffle->items as $it){
+                $tier = $it->tier;
+                if(!isset($byTier[$tier])){
+                    $byTier[$tier] = [
+                        'total' => 0,
+                        'awarded' => 0,
+                    ];
+                }
+                $byTier[$tier]['total'] += (int)$it->quantity_total;
+                $byTier[$tier]['awarded'] += (int)($it->quantity_awarded ?? 0);
+            }
+            $raffle->admin_stats = [
+                'tickets_sold' => $ticketsSold,
+                'prizes_total' => $totalCapacity,
+                'prizes_awarded' => $awardedTotal,
+                'prizes_remaining' => $remainingPrizes,
+                'prizes_awarded_percent' => $percentPrizesAwarded,
+                'tiers' => $byTier,
+            ];
+            return $raffle;
+        });
         return Inertia::render('Admin/Raffles/Index', [
             'raffles' => $raffles,
             'filters' => [ 'status' => $status ]
