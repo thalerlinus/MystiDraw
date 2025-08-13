@@ -20,7 +20,7 @@
         <div style="margin-bottom: 12px;">
             <strong style="color: #374151;">Betrag:</strong>
             <span style="color: #059669; font-weight: 600;">
-                {{ number_format($payment->order->total / 100, 2, ',', '.') }} {{ strtoupper($payment->order->currency) }}
+                {{ number_format((float)$payment->order->total, 2, ',', '.') }} {{ strtoupper($payment->order->currency) }}
             </span>
         </div>
         
@@ -103,7 +103,7 @@
         </p>
         <div style="margin-top: 12px; padding: 12px; background-color: white; border-radius: 6px; border-left: 4px solid #1e3a8a;">
             <p style="margin: 0; color: #1e3a8a; font-weight: 600; font-size: 14px;">
-                <strong>Rechnungsnummer:</strong> MD-{{ date('Y') }}-{{ str_pad($payment->id, 4, '0', STR_PAD_LEFT) }}
+                <strong>Rechnungsnummer:</strong> {{ $payment->invoice_number ?? ('MD-' . date('Y') . '-' . str_pad($payment->id, 4, '0', STR_PAD_LEFT)) }}
             </p>
         </div>
     </div>
@@ -123,7 +123,7 @@
         </p>
         <p style="margin: 0; font-size: 14px;">
             Unser Support-Team hilft gerne weiter: 
-            <a href="mailto:support@mystidraw.com" style="color: #1e3a8a; text-decoration: none; font-weight: 600;">support@mystidraw.com</a>
+            <a href="mailto:contact@mystidraw.com" style="color: #1e3a8a; text-decoration: none; font-weight: 600;">contact@mystidraw.com</a>
         </p>
     </div>
 

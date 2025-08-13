@@ -35,4 +35,9 @@ class UserItem extends Model
     {
         return $this->belongsTo(TicketOutcome::class);
     }
+
+    public function shipmentItems()
+    {
+        return $this->hasMany(ShipmentItem::class);
+    }
 }

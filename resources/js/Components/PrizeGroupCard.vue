@@ -1,8 +1,49 @@
 <template>
-    <div class="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
+    <div class="bg-white rounded-lg border overflow-hidden shadow-sm relative transition-all duration-200"
+         :class="[
+           'border-gray-200',
+           isShippingMode ? 'cursor-pointer hover:shadow-lg hover:scale-102' : '',
+           isShippingMode && isSelected ? 'ring-2 ring-blue-500 border-blue-500 shadow-lg scale-102' : '',
+           isShippingMode && !isSelected ? 'hover:border-blue-300' : ''
+         ]"
+         @click="handleCardClick">
+        
+        <!-- Selection Overlay -->
+        <div v-if="isShippingMode" 
+             class="absolute inset-0 bg-blue-500/5 z-10 transition-all duration-200"
+             :class="isSelected ? 'bg-blue-500/15' : 'hover:bg-blue-500/8'">
+          
+          <!-- Selection Indicator -->
+          <div class="absolute top-1 sm:top-2 right-1 sm:right-2 z-20">
+            <div class="w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 sm:border-3 border-white bg-white shadow-lg flex items-center justify-center transition-all duration-200"
+                 :class="isSelected ? 'bg-blue-500 border-blue-500 scale-110' : 'bg-white border-gray-300 hover:border-blue-400 hover:scale-105'">
+              <font-awesome-icon v-if="isSelected" :icon="['fas', 'check']" class="text-white text-xs sm:text-sm" />
+              <font-awesome-icon v-else :icon="['fas', 'plus']" class="text-gray-400 text-xs sm:text-sm group-hover:text-blue-500" />
+            </div>
+          </div>
+          
+          <!-- Hover instruction - nur auf größeren Bildschirmen -->
+          <div v-if="!isSelected" class="absolute bottom-1 sm:bottom-2 left-1 sm:left-2 right-1 sm:right-2 z-20 opacity-0 hover:opacity-100 transition-opacity duration-200 hidden sm:block">
+            <div class="bg-black/75 text-white text-xs px-2 py-1 rounded-md text-center">
+              Zum Versand hinzufügen
+            </div>
+          </div>
+          
+          <!-- Selected badge -->
+          <div v-if="isSelected" class="absolute bottom-1 sm:bottom-2 left-1 sm:left-2 right-1 sm:right-2 z-20">
+            <div class="bg-blue-500 text-white text-xs px-1 sm:px-2 py-1 rounded-md text-center font-medium">
+              <font-awesome-icon :icon="['fas', 'check']" class="mr-1" />
+              <span class="hidden sm:inline">Ausgewählt</span>
+              <span class="sm:hidden">✓</span>
+            </div>
+          </div>
+        </div>
+        
         <div class="relative">
             <!-- Image Carousel für diese Preisgruppe -->
-            <div class="h-32 sm:h-40 bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center relative overflow-hidden cursor-pointer" @click="openModal">
+            <div class="h-28 sm:h-32 md:h-40 bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center relative overflow-hidden" 
+                 :class="isShippingMode ? 'cursor-pointer' : 'cursor-pointer'" 
+                 @click="!isShippingMode && openModal()">
                 <div 
                     v-if="prizeGroup.product && prizeGroup.product.images && prizeGroup.product.images.length > 0"
                     class="flex transition-transform duration-300 ease-in-out w-full h-full"
@@ -73,9 +114,9 @@
                 </div>
 
                 <!-- Tier Badge -->
-                <div class="absolute top-1 right-1">
+                <div class="absolute top-0.5 sm:top-1 right-0.5 sm:right-1" :class="{ 'top-8 sm:top-10': isShippingMode }">
                     <span 
-                        class="px-1.5 py-0.5 rounded-full text-white text-xs font-bold"
+                        class="px-1 sm:px-1.5 py-0.5 rounded-full text-white text-xs font-bold"
                         :class="getTierColor(prizeGroup.tier)"
                     >
                         {{ prizeGroup.tier }}
@@ -83,17 +124,18 @@
                 </div>
 
                 <!-- Count Badge -->
-                <div v-if="prizeGroup.count > 1" class="absolute top-1 left-1 z-10">
-                    <span class="px-1.5 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full border border-white">
+                <div v-if="prizeGroup.count > 1" class="absolute top-0.5 sm:top-1 left-0.5 sm:left-1 z-10" :class="{ 'top-8 sm:top-10': isShippingMode }">
+                    <span class="px-1 sm:px-1.5 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full border border-white">
                         {{ prizeGroup.count }}x
                     </span>
                 </div>
 
                 <!-- Image Count Badge -->
-                <div v-if="hasMultipleImages" class="absolute bottom-1 left-1 z-10">
-                    <span class="px-1.5 py-0.5 bg-black/70 text-white text-xs font-medium rounded-full border border-white/50">
-                        <font-awesome-icon :icon="['fas', 'images']" class="mr-1" />
-                        {{ prizeGroup.product.images.length }}
+                <div v-if="hasMultipleImages" class="absolute bottom-0.5 sm:bottom-1 left-0.5 sm:left-1 z-10">
+                    <span class="px-1 sm:px-1.5 py-0.5 bg-black/70 text-white text-xs font-medium rounded-full border border-white/50">
+                        <font-awesome-icon :icon="['fas', 'images']" class="mr-0.5 sm:mr-1 text-xs" />
+                        <span class="hidden sm:inline">{{ prizeGroup.product.images.length }}</span>
+                        <span class="sm:hidden">{{ prizeGroup.product.images.length }}</span>
                     </span>
                 </div>
 
@@ -107,10 +149,35 @@
             </div>
 
             <!-- Product Info -->
-            <div class="p-3">
+                        <div class="p-3 relative">
                 <h4 class="font-medium text-sm text-gray-900 mb-1 line-clamp-2">
                     {{ prizeGroup.product?.name || 'Unbekanntes Produkt' }}
                 </h4>
+                                <!-- Tracking Info Icon -->
+                                <div v-if="hasTracking" class="absolute top-2 right-2">
+                                    <button @click.stop="toggleTracking" class="text-blue-600 hover:text-blue-800" :title="'Tracking Info'">
+                                        <font-awesome-icon :icon="['fas','info-circle']" />
+                                    </button>
+                                    <div v-if="showTracking" class="absolute z-30 mt-2 right-0 w-60 bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-xs text-gray-700">
+                                        <div class="flex justify-between items-center mb-1">
+                                            <span class="font-semibold">Sendung</span>
+                                            <button @click.stop="toggleTracking" class="text-gray-400 hover:text-gray-600">
+                                                <font-awesome-icon :icon="['fas','times']" />
+                                            </button>
+                                        </div>
+                                        <div class="space-y-1">
+                                            <div v-if="firstTracking.tracking_carrier"><span class="font-medium">Carrier:</span> {{ firstTracking.tracking_carrier }}</div>
+                                            <div v-if="firstTracking.tracking_number"><span class="font-medium">Nummer:</span>
+                                                <a :href="firstTracking.tracking_url || '#'" target="_blank" class="text-blue-600 hover:underline">
+                                                    {{ firstTracking.tracking_number }}
+                                                </a>
+                                            </div>
+                                            <div v-if="firstTracking.shipped_at"><span class="font-medium">Versendet:</span> {{ formatDate(firstTracking.shipped_at) }}</div>
+                                            <div v-if="firstTracking.delivered_at"><span class="font-medium">Zugestellt:</span> {{ formatDate(firstTracking.delivered_at) }}</div>
+                                            <div v-else class="text-amber-600" v-if="firstTracking.shipped_at">Noch nicht zugestellt</div>
+                                        </div>
+                                    </div>
+                                </div>
                 
                 <!-- Ticket Numbers -->
                 <div class="flex items-center justify-center text-xs text-slate-600 mb-2">
@@ -236,8 +303,12 @@ import { getImageUrl } from '@/utils/cdn';
 
 const props = defineProps({
     prizeGroup: { type: Object, required: true },
-    pullZone: { type: String, required: true }
+    pullZone: { type: String, required: true },
+    isShippingMode: { type: Boolean, default: false },
+    isSelected: { type: Boolean, default: false }
 });
+
+const emit = defineEmits(['toggle-selection']);
 
 // Reactive data
 const currentImageIndex = ref(0);
@@ -249,7 +320,26 @@ const hasMultipleImages = computed(() => {
     return props.prizeGroup.product?.images?.length > 1;
 });
 
+// Tracking data extraction (first ticket in group)
+const firstTracking = computed(()=>{
+    const t = props.prizeGroup.tickets?.[0];
+    return t || {};
+});
+const hasTracking = computed(()=> !!(firstTracking.value.tracking_number || firstTracking.value.shipped_at));
+const showTracking = ref(false);
+const toggleTracking = () => { showTracking.value = !showTracking.value; };
+
+const formatDate = (d) => d ? new Date(d).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'}) : '';
+
 // Methods
+const handleCardClick = () => {
+    if (props.isShippingMode) {
+        emit('toggle-selection');
+    } else {
+        openModal();
+    }
+};
+
 const nextImage = () => {
     if (props.prizeGroup.product?.images?.length > 1) {
         currentImageIndex.value = (currentImageIndex.value + 1) % props.prizeGroup.product.images.length;
@@ -316,5 +406,13 @@ const getTierColor = (tier) => {
     line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+}
+
+.scale-102 {
+    transform: scale(1.02);
+}
+
+.border-3 {
+    border-width: 3px;
 }
 </style>

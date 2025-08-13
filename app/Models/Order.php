@@ -15,7 +15,7 @@ class Order extends Model
     public const STATUS_CANCELLED = 'cancelled';
 
     protected $fillable = [
-        'user_id','status','total','currency','provider_fee','paid_at','meta','shipping_address_id','billing_address_id'
+        'user_id','status','type','total','currency','provider_fee','paid_at','meta','shipping_address_id','billing_address_id'
     ];
 
     protected function casts(): array

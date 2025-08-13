@@ -10,7 +10,7 @@ class OrderItem extends Model
     use HasFactory;
 
     protected $fillable = [
-        'order_id','raffle_id','quantity','unit_price','subtotal'
+        'order_id','raffle_id','quantity','unit_price','subtotal','type','meta'
     ];
 
     protected function casts(): array
@@ -18,7 +18,8 @@ class OrderItem extends Model
         return [
             'quantity' => 'integer',
             'unit_price' => 'decimal:2',
-            'subtotal' => 'decimal:2'
+            'subtotal' => 'decimal:2',
+            'meta' => 'array'
         ];
     }
 

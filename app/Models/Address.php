@@ -10,7 +10,7 @@ class Address extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id','label','first_name','last_name','company','street','house_number','address2','postal_code','city','state','country_code','phone','is_default'
+        'user_id','label','first_name','last_name','company','street','house_number','address2','postal_code','city','state','country','country_code','phone','is_default'
     ];
 
     protected function casts(): array

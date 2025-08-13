@@ -12,10 +12,12 @@ const filters = computed(()=> page.props.filters || {});
     <form method="get" class="mb-4">
       <select name="status" class="rounded border-gray-300" :value="filters.status" @change="$event.target.form.submit()">
         <option value="">Alle Status</option>
-        <option value="pending">Pending</option>
-        <option value="processing">Processing</option>
+  <option value="draft">Draft</option>
+  <option value="queued">Queued</option>
+  <option value="label_printed">Label Printed</option>
         <option value="shipped">Shipped</option>
         <option value="delivered">Delivered</option>
+  <option value="returned">Returned</option>
       </select>
     </form>
     <div class="overflow-hidden rounded-lg bg-white shadow ring-1 ring-gray-100">
@@ -27,6 +29,7 @@ const filters = computed(()=> page.props.filters || {});
             <th class="px-4 py-2 text-left">Order</th>
             <th class="px-4 py-2 text-left">Carrier</th>
             <th class="px-4 py-2 text-left">Tracking</th>
+            <th></th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-100 bg-white text-sm">
@@ -36,6 +39,7 @@ const filters = computed(()=> page.props.filters || {});
             <td class="px-4 py-2">#{{ s.order_id }}</td>
             <td class="px-4 py-2">{{ s.carrier || '-' }}</td>
             <td class="px-4 py-2">{{ s.tracking_number || '-' }}</td>
+            <td class="px-4 py-2 text-right"><Link :href="`/admin/shipments/${s.id}`" class="text-indigo-600 hover:underline text-xs">Details</Link></td>
           </tr>
         </tbody>
       </table>

@@ -47,4 +47,12 @@ class User extends Authenticatable implements MustVerifyEmail
             'is_admin' => 'boolean'
         ];
     }
+
+    /**
+     * Get the user's addresses.
+     */
+    public function addresses()
+    {
+        return $this->hasMany(Address::class);
+    }
 }

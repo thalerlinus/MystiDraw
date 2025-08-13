@@ -33,7 +33,7 @@ class DashboardController extends Controller
             ->orderBy('remaining','asc')
             ->limit(5)
             ->get(['id','name']);
-        $openShipments = Shipment::whereIn('status', ['pending','processing'])->limit(5)->get(['id','order_id','status']);
+    $openShipments = Shipment::whereIn('status', ['draft','queued','label_printed'])->limit(5)->get(['id','order_id','status']);
 
         return Inertia::render('Admin/Dashboard', [
             'kpis' => [

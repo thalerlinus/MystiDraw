@@ -10,7 +10,7 @@ class OrderController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Order::withCount('items');
+    $query = Order::withCount('items')->with(['payments' => function($q){ $q->latest(); }]);
         if ($status = $request->get('status')) {
             $query->where('status',$status);
         }
