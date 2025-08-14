@@ -119,10 +119,14 @@
                                 <div class="p-1 bg-slate-900/10 rounded-full mr-2 sm:mr-3">
                                     <font-awesome-icon :icon="['fas', $page.props.auth?.user ? 'ticket' : 'user']" class="animate-pulse text-sm sm:text-base" />
                                 </div>
-                                <span v-if="$page.props.auth?.user" class="hidden sm:inline">Jetzt Lose kaufen</span>
-                                <span v-if="$page.props.auth?.user" class="sm:hidden">Lose kaufen</span>
-                                <span v-else class="hidden sm:inline">Anmelden & Lose kaufen</span>
-                                <span v-else class="sm:hidden">Anmelden</span>
+                                <template v-if="$page.props.auth?.user">
+                                    <span class="hidden sm:inline">Jetzt Lose kaufen</span>
+                                    <span class="sm:hidden">Lose kaufen</span>
+                                </template>
+                                <template v-else>
+                                    <span class="hidden sm:inline">Anmelden & Lose kaufen</span>
+                                    <span class="sm:hidden">Anmelden</span>
+                                </template>
                                 <font-awesome-icon :icon="['fas', 'arrow-right']" class="ml-2 sm:ml-3 transition-transform group-hover:translate-x-1" />
                             </div>
                         </button>
@@ -514,10 +518,14 @@
                                     <div class="p-1 sm:p-2 bg-slate-900/10 rounded-full mr-3 sm:mr-4">
                                         <font-awesome-icon :icon="['fas', $page.props.auth?.user ? 'ticket' : 'user']" class="animate-pulse text-sm sm:text-lg" />
                                     </div>
-                                    <span v-if="$page.props.auth?.user" class="hidden sm:inline">Lose kaufen - {{ formatPrice(raffle.base_ticket_price) }}</span>
-                                    <span v-if="$page.props.auth?.user" class="sm:hidden">Lose kaufen</span>
-                                    <span v-else class="hidden sm:inline">Anmelden & Lose kaufen</span>
-                                    <span v-else class="sm:hidden">Anmelden</span>
+                                    <template v-if="$page.props.auth?.user">
+                                        <span class="hidden sm:inline">Lose kaufen - {{ formatPrice(raffle.base_ticket_price) }}</span>
+                                        <span class="sm:hidden">Lose kaufen</span>
+                                    </template>
+                                    <template v-else>
+                                        <span class="hidden sm:inline">Anmelden & Lose kaufen</span>
+                                        <span class="sm:hidden">Anmelden</span>
+                                    </template>
                                     <font-awesome-icon :icon="['fas', 'arrow-right']" class="ml-3 sm:ml-4 transition-transform group-hover:translate-x-2" />
                                 </div>
                             </button>
@@ -557,7 +565,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 import MainLayout from '@/Layouts/MainLayout.vue';
 import ProductImageGallery from '@/Components/ProductImageGallery.vue';
 import TicketPurchaseModal from '@/Components/TicketPurchaseModal.vue';
@@ -688,16 +696,13 @@ const scrollToTicketPurchase = () => {
     }
 };
 
+const page = usePage();
+
 const openPurchaseModal = (qty = 1) => {
-    // Überprüfung ob Benutzer angemeldet ist
-    if (!$page.props.auth?.user) {
-        // Benutzerfreundliche Weiterleitung mit Hinweis
-        if (confirm('Sie müssen angemeldet sein, um Lose zu kaufen. Möchten Sie sich jetzt anmelden?')) {
-            window.location.href = route('login');
-        }
+    if (!page.props.auth?.user) {
+        window.location.href = route('login');
         return;
     }
-    
     selectedQuantity.value = qty;
     showPurchaseModal.value = true;
 };
