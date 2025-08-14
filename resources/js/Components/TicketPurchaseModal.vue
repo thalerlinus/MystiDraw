@@ -157,6 +157,23 @@
                 <!-- Stripe Payment Element (stable container) -->
                 <div class="mb-6">
                     <label class="block text-lg font-bold text-gray-900 mb-3">Zahlungsmethode</label>
+                    
+                    <!-- Reservation Timer -->
+                    <div v-if="showTimer" class="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-xl">
+                        <div class="flex items-center justify-between text-sm">
+                            <div class="flex items-center space-x-2 text-orange-700">
+                                <font-awesome-icon :icon="['fas', 'clock']" />
+                                <span class="font-semibold">Reservierung läuft ab in:</span>
+                            </div>
+                            <div class="font-mono font-bold text-orange-800 text-lg">
+                                {{ formatTime(timeRemaining) }}
+                            </div>
+                        </div>
+                        <div class="mt-2 text-xs text-orange-600">
+                            Die Lose sind für Sie reserviert. Schließen Sie den Kauf ab, bevor die Zeit abläuft.
+                        </div>
+                    </div>
+                    
                     <div id="payment-element" class="p-4 border-2 border-gray-200 rounded-xl relative min-h-[80px]">
                         <div v-show="!clientSecret" class="h-full w-full flex items-center justify-center text-sm text-gray-500 space-x-2">
                             <font-awesome-icon :icon="['fas','spinner']" class="animate-spin" />
@@ -202,7 +219,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue';
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import { loadStripe } from '@stripe/stripe-js';
@@ -300,7 +317,16 @@ const decreaseQuantity = () => {
     }
 };
 
-const closeModal = () => {
+const closeModal = async () => {
+    // Cancel payment intent when closing modal to free up reserved tickets immediately
+    if (clientSecret.value && window.__lastOrderId) {
+        try {
+            await axios.post(`/orders/${window.__lastOrderId}/cancel`);
+        } catch (e) {
+            // Silently fail - cleanup will happen via cron anyway
+            console.warn('Failed to cancel payment intent:', e);
+        }
+    }
     emit('close');
 };
 
@@ -315,6 +341,17 @@ const lastIntentQuantity = ref(null);
 // Track auto update state
 const updatingIntent = ref(false);
 const page = usePage();
+
+// Timer for reservation expiry
+const reservationTimer = ref(null);
+const timeRemaining = ref(300); // 5 minutes in seconds
+const showTimer = ref(false);
+
+const formatTime = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+};
 
 const initStripeElements = async (opId) => {
     if (!props.isOpen) return; // modal must be open
@@ -365,6 +402,21 @@ const createIntent = async () => {
     clientSecret.value = data.client_secret;
     lastIntentQuantity.value = quantity.value;
     await initStripeElements(opId);
+    
+    // Start reservation timer
+    if (!showTimer.value) {
+        showTimer.value = true;
+        timeRemaining.value = 300; // 5 minutes
+        reservationTimer.value = setInterval(() => {
+            timeRemaining.value--;
+            if (timeRemaining.value <= 0) {
+                clearInterval(reservationTimer.value);
+                showTimer.value = false;
+                errorMessage.value = 'Reservierung abgelaufen. Bitte versuchen Sie es erneut.';
+                closeModal();
+            }
+        }, 1000);
+    }
     } catch (e) {
         errorMessage.value = e.response?.data?.message || 'Fehler beim Anlegen der Zahlung';
     } finally {
@@ -429,6 +481,11 @@ watch(() => props.isOpen, async (open) => {
         clientSecret.value = null;
         elements.value = null;
         lastIntentQuantity.value = null;
+        showTimer.value = false;
+        if (reservationTimer.value) {
+            clearInterval(reservationTimer.value);
+            reservationTimer.value = null;
+        }
         if (paymentElement.value) {
             try { paymentElement.value.unmount(); } catch (_) {}
             paymentElement.value = null;
@@ -457,6 +514,31 @@ watch(quantity, () => {
             refreshIntent();
         }
     }, 600); // 600ms debounce
+});
+
+// Cleanup when user leaves page/closes tab
+const handlePageUnload = async () => {
+    if (clientSecret.value && window.__lastOrderId) {
+        // Use sendBeacon for reliable cleanup on page unload
+        const data = JSON.stringify({ _token: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') });
+        navigator.sendBeacon(`/orders/${window.__lastOrderId}/cancel`, data);
+    }
+};
+
+onMounted(() => {
+    window.addEventListener('beforeunload', handlePageUnload);
+});
+
+onUnmounted(() => {
+    window.removeEventListener('beforeunload', handlePageUnload);
+    
+    // Cleanup timers
+    if (reservationTimer.value) {
+        clearInterval(reservationTimer.value);
+    }
+    if (qtyTimer) {
+        clearTimeout(qtyTimer);
+    }
 });
 </script>
 

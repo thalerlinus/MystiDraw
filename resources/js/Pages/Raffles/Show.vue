@@ -96,6 +96,13 @@
                         </div>
                     </div>
 
+                    <!-- Reservation Timer -->
+                    <ReservationTimer 
+                        :raffle-id="raffle.id"
+                        @update:reserved="handleReservedUpdate"
+                        @tickets-released="handleTicketsReleased"
+                    />
+
                     <!-- Preis Information -->
                     <div class="text-center mb-6 sm:mb-8 md:mb-10">
                         <div class="inline-block bg-gradient-to-r from-white/10 to-white/5 backdrop-blur-sm p-4 sm:p-6 md:p-8 rounded-2xl border border-white/20 shadow-2xl">
@@ -569,6 +576,7 @@ import { Link, usePage } from '@inertiajs/vue3';
 import MainLayout from '@/Layouts/MainLayout.vue';
 import ProductImageGallery from '@/Components/ProductImageGallery.vue';
 import TicketPurchaseModal from '@/Components/TicketPurchaseModal.vue';
+import ReservationTimer from '@/Components/ReservationTimer.vue';
 import axios from 'axios';
 import { getThumbUrl, getImageUrl } from '@/utils/cdn';
 
@@ -718,6 +726,16 @@ const handlePurchase = async (purchaseData) => {
         // await axios.get(route('raffles.show', raffle.slug));
     } catch(e) {}
     closePurchaseModal();
+};
+
+const handleReservedUpdate = (reservedCount) => {
+    console.log(`${reservedCount} Lose sind aktuell reserviert`);
+};
+
+const handleTicketsReleased = (releasedCount) => {
+    console.log(`${releasedCount} Lose wurden soeben freigegeben`);
+    // Optional: Seite neu laden um aktuelle Verfügbarkeit anzuzeigen
+    // window.location.reload();
 };
 </script>
 

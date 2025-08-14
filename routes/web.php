@@ -25,6 +25,9 @@ Route::post('/api/cookie-consent', [\App\Http\Controllers\CookieConsentControlle
 Route::get('/api/cookie-consent/{category}', [\App\Http\Controllers\CookieConsentController::class, 'hasConsent']);
 Route::delete('/api/cookie-consent', [\App\Http\Controllers\CookieConsentController::class, 'resetConsent']);
 
+// Reservation Status API (public - no auth required)
+Route::get('/api/raffles/{raffle}/reservation-status', [\App\Http\Controllers\Api\ReservationStatusController::class, 'getRaffleReservationStatus']);
+
 // Legal pages
 Route::get('/impressum', function () {
     return Inertia::render('Legal/Impressum');
@@ -54,6 +57,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/tickets/{ticket}/open', [TicketOpeningController::class, 'openTicket'])->name('tickets.open');
     Route::post('/tickets/open-all', [TicketOpeningController::class, 'openAllTickets'])->name('tickets.openAll');
     Route::get('/inventory', [\App\Http\Controllers\InventoryController::class, 'index'])->name('inventory.index');
+
+    // Order cancellation
+    Route::post('/orders/{order}/cancel', [\App\Http\Controllers\OrderCancellationController::class, 'cancel'])->name('orders.cancel');
 
     // Shipping routes
     Route::get('/shipping/create', function () {

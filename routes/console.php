@@ -7,5 +7,5 @@ use App\Console\Commands\ExpirePendingOrders;
 
 
 
-Schedule::command(ExpirePendingOrders::class)->everyMinute();
+Schedule::command(ExpirePendingOrders::class, ['--minutes=5'])->everyMinute();
 
