@@ -2,6 +2,7 @@
 import { Head } from '@inertiajs/vue3';
 import Navbar from '@/Components/Navbar.vue';
 import Footer from '@/Components/Footer.vue';
+import CookieConsent from '@/Components/CookieConsent.vue';
 
 defineProps({
     title: {
@@ -45,5 +46,8 @@ defineProps({
 
         <!-- Footer -->
         <Footer v-if="showFooter" />
+        
+        <!-- Cookie Consent -->
+        <CookieConsent />
     </div>
 </template>

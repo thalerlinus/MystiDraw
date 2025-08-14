@@ -82,17 +82,15 @@ onUnmounted(() => {
                     <div class="shrink-0 flex items-center">
                         <Link href="/" class="flex items-center space-x-3 group">
                             <div class="relative">
-                                <div class="w-12 h-12 bg-gradient-to-br from-blue-900 to-blue-700 rounded-xl flex items-center justify-center group-hover:shadow-lg transition-all duration-300">
-                                    <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"></path>
-                                    </svg>
+                                <div class="w-12 h-12 bg-navy-gradient rounded-xl p-1.5 group-hover:shadow-xl group-hover:shadow-navy-500/25 transition-all duration-300">
+                                    <img src="/images/logo.webp" alt="MystiDraw Logo" class="w-full h-full object-contain">
                                 </div>
                             </div>
                             <div class="hidden md:block">
-                                <h1 class="text-xl font-bold text-blue-900 group-hover:text-blue-800 transition-colors duration-300">
+                                <h1 class="text-xl font-bold text-navy-900 group-hover:text-navy-800 transition-colors duration-300">
                                     MystiDraw
                                 </h1>
-                                <p class="text-xs text-gray-500 -mt-1">Lose • Gewinne • Überraschungen</p>
+                                <p class="text-xs text-navy-500 -mt-1">Lose • Gewinne • Überraschungen</p>
                             </div>
                         </Link>
                     </div>
@@ -103,8 +101,8 @@ onUnmounted(() => {
                             href="/"
                             class="relative px-4 py-2 text-sm font-semibold transition-all duration-300 ease-in-out group rounded-full"
                             :class="route().current('home') || route().current('/') 
-                                ? 'text-blue-900 bg-blue-50' 
-                                : 'text-gray-700 hover:text-blue-900 hover:bg-blue-50'"
+                                ? 'text-navy-900 bg-navy-50' 
+                                : 'text-navy-700 hover:text-navy-900 hover:bg-navy-50'"
                         >
                             <span class="relative z-10">Startseite</span>
                         </Link>
@@ -113,22 +111,22 @@ onUnmounted(() => {
                             href="/raffles"
                             class="relative px-4 py-2 text-sm font-semibold transition-all duration-300 ease-in-out group rounded-full"
                             :class="route().current('raffles*') 
-                                ? 'text-blue-900 bg-blue-50' 
-                                : 'text-gray-700 hover:text-blue-900 hover:bg-blue-50'"
+                                ? 'text-navy-900 bg-navy-50' 
+                                : 'text-navy-700 hover:text-navy-900 hover:bg-navy-50'"
                         >
                             <span class="relative z-10">Raffles</span>
                         </Link>
                         
                         <button
                             @click="scrollToSection('how-it-works')"
-                            class="relative px-4 py-2 text-sm font-semibold text-gray-700 rounded-full transition-all duration-300 ease-in-out group hover:text-blue-900 hover:bg-blue-50"
+                            class="relative px-4 py-2 text-sm font-semibold text-navy-700 rounded-full transition-all duration-300 ease-in-out group hover:text-navy-900 hover:bg-navy-50"
                         >
                             <span class="relative z-10">Wie es funktioniert</span>
                         </button>
                         
                         <button
                             @click="scrollToSection('contact')"
-                            class="relative px-6 py-2 text-sm font-semibold text-white bg-gradient-to-r from-blue-900 to-blue-800 rounded-full transition-all duration-300 ease-in-out hover:from-blue-800 hover:to-blue-700 hover:shadow-lg hover:shadow-blue-900/25 transform hover:scale-105"
+                            class="relative px-6 py-2 text-sm font-semibold text-navy-900 bg-gold-gradient rounded-full transition-all duration-300 ease-in-out hover:shadow-lg hover:shadow-gold-500/25 transform hover:scale-105"
                         >
                             Kontakt
                         </button>
@@ -141,7 +139,7 @@ onUnmounted(() => {
                     <template v-if="$page.props.auth.user">
                         <Link 
                             href="/tickets"
-                            class="relative p-2 text-gray-500 hover:text-blue-900 transition-colors duration-300 rounded-full hover:bg-blue-50 group"
+                            class="relative p-2 text-navy-500 hover:text-navy-900 transition-colors duration-300 rounded-full hover:bg-navy-50 group"
                         >
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path>
@@ -149,7 +147,7 @@ onUnmounted(() => {
                             <!-- Badge für ungeöffnete Tickets -->
                             <span 
                                 v-if="unopenedTicketsCount > 0"
-                                class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center group-hover:bg-red-600 transition-colors duration-300"
+                                class="absolute -top-1 -right-1 bg-gold-500 text-navy-900 text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center group-hover:bg-gold-600 transition-colors duration-300"
                             >
                                 {{ unopenedTicketsCount > 99 ? '99+' : unopenedTicketsCount }}
                             </span>
@@ -158,7 +156,7 @@ onUnmounted(() => {
                         <!-- Inventar -->
                         <Link 
                             href="/inventory"
-                            class="p-2 text-gray-500 hover:text-blue-900 transition-colors duration-300 rounded-full hover:bg-blue-50"
+                            class="p-2 text-navy-500 hover:text-navy-900 transition-colors duration-300 rounded-full hover:bg-navy-50"
                         >
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M9 9h.01M15 9h.01M9 15h.01M15 15h.01"></path>
@@ -172,17 +170,17 @@ onUnmounted(() => {
                             <template #trigger>
                                 <button
                                     type="button"
-                                    class="flex items-center space-x-3 px-4 py-2 text-sm font-medium text-gray-700 bg-white/80 border border-gray-200/50 rounded-full hover:bg-white hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-300 group"
+                                    class="flex items-center space-x-3 px-4 py-2 text-sm font-medium text-navy-700 bg-white/80 border border-navy-200/50 rounded-full hover:bg-white hover:border-navy-300 focus:outline-none focus:ring-2 focus:ring-navy-500 focus:ring-offset-2 transition-all duration-300 group"
                                 >
-                                    <div class="w-8 h-8 bg-gradient-to-r from-blue-900 to-blue-700 rounded-full flex items-center justify-center">
-                                        <span class="text-white text-sm font-semibold">
+                                    <div class="w-8 h-8 bg-navy-gradient rounded-full flex items-center justify-center">
+                                        <span class="text-gold-400 text-sm font-semibold">
                                             {{ $page.props.auth.user ? $page.props.auth.user.name.charAt(0).toUpperCase() : 'G' }}
                                         </span>
                                     </div>
                                     <span class="hidden md:block">
                                         {{ $page.props.auth.user ? $page.props.auth.user.name : 'Gast' }}
                                     </span>
-                                    <svg class="w-4 h-4 text-gray-400 group-hover:text-gray-600 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-4 h-4 text-navy-400 group-hover:text-navy-600 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                                     </svg>
                                 </button>
@@ -191,9 +189,9 @@ onUnmounted(() => {
                             <template #content>
                                 <div class="py-2">
                                     <template v-if="$page.props.auth.user">
-                                        <div class="px-4 py-2 border-b border-gray-100">
-                                            <p class="text-sm font-medium text-gray-900">{{ $page.props.auth.user.name }}</p>
-                                            <p class="text-xs text-gray-500">{{ $page.props.auth.user.email }}</p>
+                                        <div class="px-4 py-2 border-b border-navy-100">
+                                            <p class="text-sm font-medium text-navy-900">{{ $page.props.auth.user.name }}</p>
+                                            <p class="text-xs text-navy-500">{{ $page.props.auth.user.email }}</p>
                                         </div>
                                         <DropdownLink :href="route('profile.edit')" class="flex items-center space-x-2">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -230,9 +228,18 @@ onUnmounted(() => {
 
                 <!-- Mobile menu button -->
                 <div class="flex items-center lg:hidden">
+                    <!-- Mobile Logo + Name -->
+                    <div class="flex items-center space-x-2 mr-4">
+                      
+                        <div>
+                            <h2 class="text-sm font-bold text-navy-900">MystiDraw</h2>
+                            <p class="text-xs text-navy-500 -mt-1">Lose • Gewinne • Überraschungen</p>
+                        </div>
+                    </div>
+                    
                     <button
                         @click="showingNavigationDropdown = !showingNavigationDropdown"
-                        class="inline-flex items-center justify-center p-2 rounded-full text-gray-400 hover:text-indigo-600 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 focus:text-indigo-600 transition-all duration-300"
+                        class="inline-flex items-center justify-center p-2 rounded-full text-navy-400 hover:text-navy-600 hover:bg-navy-100 focus:outline-none focus:bg-navy-100 focus:text-navy-600 transition-all duration-300"
                     >
                         <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
                             <path
@@ -270,12 +277,14 @@ onUnmounted(() => {
             class="lg:hidden absolute top-full left-0 right-0 bg-white/95 backdrop-blur-lg border-b border-gray-200/50 shadow-lg transition-all duration-300 ease-in-out"
         >
             <div class="px-4 py-6 space-y-2">
+
+                
                 <Link 
                     href="/" 
                     class="block px-4 py-3 text-base font-medium transition-all duration-300 rounded-lg"
                     :class="route().current('/') 
-                        ? 'text-blue-900 bg-blue-50' 
-                        : 'text-gray-700 hover:text-blue-900 hover:bg-blue-50'"
+                        ? 'text-navy-900 bg-navy-50' 
+                        : 'text-navy-700 hover:text-navy-900 hover:bg-navy-50'"
                 >
                     Startseite
                 </Link>
@@ -284,43 +293,66 @@ onUnmounted(() => {
                     href="/raffles" 
                     class="block px-4 py-3 text-base font-medium transition-all duration-300 rounded-lg"
                     :class="route().current('raffles*') 
-                        ? 'text-blue-900 bg-blue-50' 
-                        : 'text-gray-700 hover:text-blue-900 hover:bg-blue-50'"
+                        ? 'text-navy-900 bg-navy-50' 
+                        : 'text-navy-700 hover:text-navy-900 hover:bg-navy-50'"
                 >
                     Raffles
                 </Link>
                 
                 <button
                     @click="scrollToSection('how-it-works')"
-                    class="w-full text-left px-4 py-3 text-base font-medium text-gray-700 hover:text-blue-900 hover:bg-blue-50 rounded-lg transition-all duration-300"
+                    class="w-full text-left px-4 py-3 text-base font-medium text-navy-700 hover:text-navy-900 hover:bg-navy-50 rounded-lg transition-all duration-300"
                 >
                     Wie es funktioniert
                 </button>
                 
                 <button
                     @click="scrollToSection('contact')"
-                    class="w-full text-left px-4 py-3 text-base font-medium text-white bg-gradient-to-r from-blue-900 to-blue-800 rounded-lg hover:from-blue-800 hover:to-blue-700 transition-all duration-300"
+                    class="w-full text-left px-4 py-3 text-base font-medium text-white bg-gold-gradient rounded-lg hover:shadow-lg hover:shadow-gold-500/25 transition-all duration-300"
                 >
                     Kontakt
                 </button>
             </div>
 
             <!-- Mobile User Menu -->
-            <div class="px-4 py-4 border-t border-gray-200/50">
+            <div class="px-4 py-4 border-t border-navy-200/50">
                 <template v-if="$page.props.auth.user">
-                    <div class="flex items-center space-x-3 px-4 py-3 bg-gray-50 rounded-lg mb-3">
-                        <div class="w-10 h-10 bg-gradient-to-r from-blue-900 to-blue-700 rounded-full flex items-center justify-center">
-                            <span class="text-white font-semibold">
+                    <div class="flex items-center space-x-3 px-4 py-3 bg-navy-50 rounded-lg mb-3">
+                        <div class="w-10 h-10 bg-navy-gradient rounded-full flex items-center justify-center">
+                            <span class="text-gold-400 font-semibold">
                                 {{ $page.props.auth.user.name.charAt(0).toUpperCase() }}
                             </span>
                         </div>
                         <div>
-                            <p class="text-sm font-medium text-gray-900">{{ $page.props.auth.user.name }}</p>
-                            <p class="text-xs text-gray-500">{{ $page.props.auth.user.email }}</p>
+                            <p class="text-sm font-medium text-navy-900">{{ $page.props.auth.user.name }}</p>
+                            <p class="text-xs text-navy-500">{{ $page.props.auth.user.email }}</p>
                         </div>
                     </div>
                     
                     <div class="space-y-1">
+                        <!-- Tickets Link mit Badge -->
+                        <ResponsiveNavLink :href="route('tickets.index')" class="flex items-center space-x-2 relative">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path>
+                            </svg>
+                            <span>Tickets</span>
+                            <!-- Badge für ungeöffnete Tickets -->
+                            <span 
+                                v-if="unopenedTicketsCount > 0"
+                                class="ml-auto bg-gold-500 text-navy-900 text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center"
+                            >
+                                {{ unopenedTicketsCount > 99 ? '99+' : unopenedTicketsCount }}
+                            </span>
+                        </ResponsiveNavLink>
+                        
+                        <!-- Inventar Link -->
+                        <ResponsiveNavLink :href="route('inventory.index')" class="flex items-center space-x-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M9 9h.01M15 9h.01M9 15h.01M15 15h.01"></path>
+                            </svg>
+                            <span>Inventar</span>
+                        </ResponsiveNavLink>
+                        
                         <ResponsiveNavLink :href="route('profile.edit')" class="flex items-center space-x-2">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>

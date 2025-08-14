@@ -195,7 +195,7 @@
                 <div v-if="prizeGroup.is_last_one" class="mt-2 p-2 bg-red-50 border border-red-200 rounded text-center">
                     <div class="flex items-center justify-center text-red-700 text-xs">
                         <font-awesome-icon :icon="['fas', 'gift']" class="mr-1 text-red-500" />
-                        <span class="font-medium">Last One Bonus!</span>
+                        <span class="font-medium">Last One Bonus!</span>                        
                     </div>
                 </div>
             </div>

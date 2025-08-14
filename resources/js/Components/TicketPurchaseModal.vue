@@ -346,6 +346,13 @@ let currentIntentOpId = 0;
 const createIntent = async () => {
     if (!props.isOpen) return; // don't create when modal closed
     if (loading.value) return; // prevent overlap
+    
+    // Zusätzliche Authentifizierungsüberprüfung
+    if (!page.props.auth?.user) {
+        errorMessage.value = 'Sie müssen angemeldet sein, um Lose zu kaufen.';
+        return;
+    }
+    
     loading.value = true;
     errorMessage.value = '';
     successMessage.value = '';
@@ -378,6 +385,12 @@ const refreshIntent = async () => {
 // No auto intent recreation on quantity change; user picks final quantity then presses purchase.
 
 const purchaseTickets = async () => {
+    // Zusätzliche Authentifizierungsüberprüfung
+    if (!page.props.auth?.user) {
+        errorMessage.value = 'Sie müssen angemeldet sein, um Lose zu kaufen.';
+        return;
+    }
+    
     // (Re)create intent only if none exists yet OR quantity changed since last intent
     if (!clientSecret.value || lastIntentQuantity.value !== quantity.value) {
         await createIntent();

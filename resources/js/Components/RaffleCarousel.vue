@@ -36,13 +36,13 @@
         <div 
           v-for="item in raffle.items" 
           :key="item.id"
-          class="min-w-full h-full relative"
+          class="min-w-full h-full relative bg-gray-100"
         >
           <img 
             v-if="item.product && item.product.images && item.product.images[0]"
             :src="resolveImage(item.product.images[0])" 
             :alt="item.product.name"
-            class="w-full h-full object-cover"
+            class="w-full h-full object-contain bg-white"
             loading="lazy"
           />
           <div 

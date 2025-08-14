@@ -22,6 +22,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'name',
         'email',
         'password',
+        'cookie_consent',
+        'cookie_consent_updated_at',
     ];
 
     /**
@@ -44,7 +46,9 @@ class User extends Authenticatable implements MustVerifyEmail
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'is_admin' => 'boolean'
+            'is_admin' => 'boolean',
+            'cookie_consent' => 'array',
+            'cookie_consent_updated_at' => 'datetime',
         ];
     }
 

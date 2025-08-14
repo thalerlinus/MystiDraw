@@ -19,6 +19,29 @@ Route::get('/checkout/success', [\App\Http\Controllers\PaymentReturnController::
 Route::get('/checkout/failed', [\App\Http\Controllers\PaymentReturnController::class, 'failed'])->name('checkout.failed');
 Route::get('/checkout/status', [\App\Http\Controllers\PaymentReturnController::class, 'status'])->name('checkout.status');
 
+// Cookie Consent API
+Route::get('/api/cookie-consent', [\App\Http\Controllers\CookieConsentController::class, 'getConsent']);
+Route::post('/api/cookie-consent', [\App\Http\Controllers\CookieConsentController::class, 'saveConsent']);
+Route::get('/api/cookie-consent/{category}', [\App\Http\Controllers\CookieConsentController::class, 'hasConsent']);
+Route::delete('/api/cookie-consent', [\App\Http\Controllers\CookieConsentController::class, 'resetConsent']);
+
+// Legal pages
+Route::get('/impressum', function () {
+    return Inertia::render('Legal/Impressum');
+})->name('impressum');
+
+Route::get('/datenschutz', function () {
+    return Inertia::render('Legal/Datenschutz');
+})->name('datenschutz');
+
+Route::get('/agb', function () {
+    return Inertia::render('Legal/Agb');
+})->name('agb');
+
+Route::get('/cookie-richtlinie', function () {
+    return Inertia::render('Legal/CookiePolicy');
+})->name('cookie-policy');
+
 Route::get('/dashboard', function () {
     if (auth()->check() && auth()->user()->is_admin) {
         return redirect()->route('admin.dashboard');

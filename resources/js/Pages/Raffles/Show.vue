@@ -117,10 +117,12 @@
                             <div class="absolute inset-0 bg-gradient-to-r from-yellow-300 to-yellow-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                             <div class="relative flex items-center">
                                 <div class="p-1 bg-slate-900/10 rounded-full mr-2 sm:mr-3">
-                                    <font-awesome-icon :icon="['fas', 'ticket']" class="animate-pulse text-sm sm:text-base" />
+                                    <font-awesome-icon :icon="['fas', $page.props.auth?.user ? 'ticket' : 'user']" class="animate-pulse text-sm sm:text-base" />
                                 </div>
-                                <span class="hidden sm:inline">Jetzt Lose kaufen</span>
-                                <span class="sm:hidden">Lose kaufen</span>
+                                <span v-if="$page.props.auth?.user" class="hidden sm:inline">Jetzt Lose kaufen</span>
+                                <span v-if="$page.props.auth?.user" class="sm:hidden">Lose kaufen</span>
+                                <span v-else class="hidden sm:inline">Anmelden & Lose kaufen</span>
+                                <span v-else class="sm:hidden">Anmelden</span>
                                 <font-awesome-icon :icon="['fas', 'arrow-right']" class="ml-2 sm:ml-3 transition-transform group-hover:translate-x-1" />
                             </div>
                         </button>
@@ -219,7 +221,7 @@
                                                 <font-awesome-icon :icon="['fas', 'gift']" class="mr-2 text-red-500" />
                                                 <span class="font-bold">Last One Bonus!</span>
                                             </div>
-                                            <p class="text-xs sm:text-sm text-red-600 mt-1">Extra Belohnung beim letzten verfügbaren Los</p>
+                                            <p class="text-xs sm:text-sm text-red-600 mt-1">Garantierte Belohnung beim letzten verfügbaren Los</p>
                                         </div>
                                     </div>
                                 </div>
@@ -296,8 +298,8 @@
                                     
                                     <div class="bg-gray-50 group-hover:bg-yellow-50 rounded-lg p-3 transition-colors duration-500">
                                         <div class="text-sm text-gray-700 group-hover:text-yellow-700 font-medium">
-                                            <font-awesome-icon :icon="['fas', 'mouse-pointer']" class="mr-2" />
-                                            Klicken zum Kaufen
+                                            <font-awesome-icon :icon="['fas', $page.props.auth?.user ? 'mouse-pointer' : 'user']" class="mr-2" />
+                                            {{ $page.props.auth?.user ? 'Klicken zum Kaufen' : 'Anmelden zum Kaufen' }}
                                         </div>
                                     </div>
                                 </div>
@@ -345,8 +347,8 @@
                                     
                                     <div class="bg-yellow-100 group-hover:bg-yellow-200 rounded-lg p-3 transition-colors duration-500">
                                         <div class="text-sm text-yellow-700 group-hover:text-yellow-800 font-medium">
-                                            <font-awesome-icon :icon="['fas', 'mouse-pointer']" class="mr-2" />
-                                            Klicken zum Kaufen
+                                            <font-awesome-icon :icon="['fas', $page.props.auth?.user ? 'mouse-pointer' : 'user']" class="mr-2" />
+                                            {{ $page.props.auth?.user ? 'Klicken zum Kaufen' : 'Anmelden zum Kaufen' }}
                                         </div>
                                     </div>
                                 </div>
@@ -472,7 +474,7 @@
                                         <font-awesome-icon :icon="['fas', 'gift']" class="mr-1 sm:mr-2 text-red-500" />
                                         <span class="font-medium">Last One Bonus!</span>
                                     </div>
-                                    <p class="text-xs text-red-600 mt-1 hidden sm:block">Extra Belohnung beim letzten verfügbaren Los</p>
+                                    <p class="text-xs text-red-600 mt-1 hidden sm:block">Garantierte Belohnung beim letzten verfügbaren Los</p>
                                 </div>
                             </div>
                         </div>
@@ -510,10 +512,12 @@
                                 <div class="absolute inset-0 bg-gradient-to-r from-yellow-300 to-yellow-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                                 <div class="relative flex items-center">
                                     <div class="p-1 sm:p-2 bg-slate-900/10 rounded-full mr-3 sm:mr-4">
-                                        <font-awesome-icon :icon="['fas', 'ticket']" class="animate-pulse text-sm sm:text-lg" />
+                                        <font-awesome-icon :icon="['fas', $page.props.auth?.user ? 'ticket' : 'user']" class="animate-pulse text-sm sm:text-lg" />
                                     </div>
-                                    <span class="hidden sm:inline">Lose kaufen - {{ formatPrice(raffle.base_ticket_price) }}</span>
-                                    <span class="sm:hidden">Lose kaufen</span>
+                                    <span v-if="$page.props.auth?.user" class="hidden sm:inline">Lose kaufen - {{ formatPrice(raffle.base_ticket_price) }}</span>
+                                    <span v-if="$page.props.auth?.user" class="sm:hidden">Lose kaufen</span>
+                                    <span v-else class="hidden sm:inline">Anmelden & Lose kaufen</span>
+                                    <span v-else class="sm:hidden">Anmelden</span>
                                     <font-awesome-icon :icon="['fas', 'arrow-right']" class="ml-3 sm:ml-4 transition-transform group-hover:translate-x-2" />
                                 </div>
                             </button>
@@ -685,6 +689,15 @@ const scrollToTicketPurchase = () => {
 };
 
 const openPurchaseModal = (qty = 1) => {
+    // Überprüfung ob Benutzer angemeldet ist
+    if (!$page.props.auth?.user) {
+        // Benutzerfreundliche Weiterleitung mit Hinweis
+        if (confirm('Sie müssen angemeldet sein, um Lose zu kaufen. Möchten Sie sich jetzt anmelden?')) {
+            window.location.href = route('login');
+        }
+        return;
+    }
+    
     selectedQuantity.value = qty;
     showPurchaseModal.value = true;
 };

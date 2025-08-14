@@ -104,7 +104,7 @@
                                 <font-awesome-icon :icon="['fas', 'gift']" class="mr-2 text-red-500" />
                                 <span class="font-bold">Last One Bonus!</span>
                             </div>
-                            <p class="text-xs sm:text-sm text-red-600 mt-1">Extra Belohnung beim letzten verfügbaren Los</p>
+                            <p class="text-xs sm:text-sm text-red-600 mt-1">Garantierte Belohnung beim letzten verfügbaren Los</p>
                         </div>
                     </div>
                 </div>

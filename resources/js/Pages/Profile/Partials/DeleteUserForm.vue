@@ -40,39 +40,59 @@ const closeModal = () => {
 
 <template>
     <section class="space-y-6">
-        <header>
-            <h2 class="text-lg font-medium text-gray-900">
-                Delete Account
-            </h2>
+        <!-- Warning Info -->
+        <div class="p-4 bg-rose-50 border border-rose-200 rounded-2xl">
+            <div class="flex items-start">
+                <div class="flex-shrink-0">
+                    <font-awesome-icon :icon="['fas', 'exclamation-triangle']" class="text-rose-500 text-lg" />
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-semibold text-rose-800 mb-2">Achtung: Unwiderrufliche Aktion</h3>
+                    <p class="text-sm text-rose-700 leading-relaxed">
+                        Sobald dein Konto gelöscht wird, werden alle deine Daten und Ressourcen dauerhaft gelöscht. 
+                        Bitte lade alle Daten oder Informationen herunter, die du behalten möchtest, bevor du dein Konto löschst.
+                    </p>
+                </div>
+            </div>
+        </div>
 
-            <p class="mt-1 text-sm text-gray-600">
-                Once your account is deleted, all of its resources and data will
-                be permanently deleted. Before deleting your account, please
-                download any data or information that you wish to retain.
-            </p>
-        </header>
+        <DangerButton 
+            @click="confirmUserDeletion"
+            class="bg-rose-600 hover:bg-rose-700 hover:shadow-lg transform hover:scale-[1.02] transition-all duration-300 px-8 py-3 rounded-xl font-semibold"
+        >
+            <font-awesome-icon :icon="['fas', 'user-times']" class="mr-2" />
+            Konto dauerhaft löschen
+        </DangerButton>
 
-        <DangerButton @click="confirmUserDeletion">Delete Account</DangerButton>
+        <Modal :show="confirmingUserDeletion" @close="closeModal" max-width="2xl">
+            <div class="p-8">
+                <!-- Header with Icon -->
+                <div class="flex items-center mb-6">
+                    <div class="w-12 h-12 bg-rose-100 rounded-full flex items-center justify-center mr-4">
+                        <font-awesome-icon :icon="['fas', 'exclamation-triangle']" class="text-rose-600 text-xl" />
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-bold text-navy-900">
+                            Konto wirklich löschen?
+                        </h2>
+                        <p class="text-navy-600">Diese Aktion kann nicht rückgängig gemacht werden</p>
+                    </div>
+                </div>
 
-        <Modal :show="confirmingUserDeletion" @close="closeModal">
-            <div class="p-6">
-                <h2
-                    class="text-lg font-medium text-gray-900"
-                >
-                    Are you sure you want to delete your account?
-                </h2>
+                <!-- Warning Box -->
+                <div class="p-4 bg-rose-50 border border-rose-200 rounded-2xl mb-6">
+                    <p class="text-sm text-rose-700 leading-relaxed">
+                        Sobald dein Konto gelöscht wird, werden alle deine Ressourcen und Daten dauerhaft gelöscht. 
+                        Bitte gib dein Passwort ein, um zu bestätigen, dass du dein Konto dauerhaft löschen möchtest.
+                    </p>
+                </div>
 
-                <p class="mt-1 text-sm text-gray-600">
-                    Once your account is deleted, all of its resources and data
-                    will be permanently deleted. Please enter your password to
-                    confirm you would like to permanently delete your account.
-                </p>
-
-                <div class="mt-6">
+                <!-- Password Input -->
+                <div class="mb-6">
                     <InputLabel
                         for="password"
-                        value="Password"
-                        class="sr-only"
+                        value="Passwort zur Bestätigung"
+                        class="text-navy-900 font-semibold"
                     />
 
                     <TextInput
@@ -80,26 +100,41 @@ const closeModal = () => {
                         ref="passwordInput"
                         v-model="form.password"
                         type="password"
-                        class="mt-1 block w-3/4"
-                        placeholder="Password"
+                        class="mt-2 block w-full rounded-xl border-navy-300 focus:border-rose-400 focus:ring-rose-400/20 bg-white/80"
+                        placeholder="••••••••"
                         @keyup.enter="deleteUser"
                     />
 
                     <InputError :message="form.errors.password" class="mt-2" />
                 </div>
 
-                <div class="mt-6 flex justify-end">
-                    <SecondaryButton @click="closeModal">
-                        Cancel
+                <!-- Action Buttons -->
+                <div class="flex justify-end space-x-4">
+                    <SecondaryButton 
+                        @click="closeModal"
+                        class="px-6 py-3 border-2 border-navy-300 text-navy-700 font-semibold rounded-xl hover:bg-navy-50 hover:border-navy-400 transition-all duration-300"
+                    >
+                        <font-awesome-icon :icon="['fas', 'times']" class="mr-2" />
+                        Abbrechen
                     </SecondaryButton>
 
                     <DangerButton
-                        class="ms-3"
-                        :class="{ 'opacity-25': form.processing }"
+                        :class="{ 'opacity-75': form.processing }"
                         :disabled="form.processing"
                         @click="deleteUser"
+                        class="bg-rose-600 hover:bg-rose-700 hover:shadow-lg transform hover:scale-[1.02] transition-all duration-300 px-8 py-3 rounded-xl font-semibold"
                     >
-                        Delete Account
+                        <span v-if="form.processing" class="flex items-center">
+                            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Konto wird gelöscht...
+                        </span>
+                        <span v-else class="flex items-center">
+                            <font-awesome-icon :icon="['fas', 'trash']" class="mr-2" />
+                            Konto endgültig löschen
+                        </span>
                     </DangerButton>
                 </div>
             </div>
