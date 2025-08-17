@@ -154,10 +154,9 @@
                     </div>
                 </div>
 
-                <!-- Stripe Payment Element (stable container) -->
-                <div class="mb-6">
-                    <label class="block text-lg font-bold text-gray-900 mb-3">Zahlungsmethode</label>
-                    
+                <!-- Schritt 2: Zahlung erst nach Klick anzeigen -->
+                <div class="mb-6" v-if="paymentStep">
+                    <label class="block text-lg font-bold text-gray-900 mb-3">Zahlung</label>
                     <!-- Reservation Timer -->
                     <div v-if="showTimer" class="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-xl">
                         <div class="flex items-center justify-between text-sm">
@@ -170,10 +169,9 @@
                             </div>
                         </div>
                         <div class="mt-2 text-xs text-orange-600">
-                            Die Lose sind für Sie reserviert. Schließen Sie den Kauf ab, bevor die Zeit abläuft.
+                            Die ausgewählten Lose sind jetzt für Sie reserviert. Bitte schließen Sie die Zahlung innerhalb der Zeit ab.
                         </div>
                     </div>
-                    
                     <div id="payment-element" class="p-4 border-2 border-gray-200 rounded-xl relative min-h-[80px]">
                         <div v-show="!clientSecret" class="h-full w-full flex items-center justify-center text-sm text-gray-500 space-x-2">
                             <font-awesome-icon :icon="['fas','spinner']" class="animate-spin" />
@@ -193,21 +191,34 @@
 
                 <!-- Actions -->
                 <div class="flex flex-col sm:flex-row gap-4">
-                    <button
-                        @click="closeModal"
-                        class="flex-1 px-6 py-4 border-2 border-gray-300 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all duration-200"
-                    >
+                    <button @click="closeModal" class="flex-1 px-6 py-4 border-2 border-gray-300 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all duration-200">
                         Abbrechen
                     </button>
-                    
+                    <!-- Schritt 1: Weiter zur Zahlung -->
                     <button
+                        v-if="!paymentStep"
+                        @click="proceedToPayment"
+                        :disabled="quantity <= 0 || quantity > raffle.tickets_available || loading"
+                        class="flex-1 px-6 py-4 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 disabled:from-gray-300 disabled:to-gray-300 text-white font-bold rounded-xl transition-all duration-200 transform hover:scale-105 disabled:transform-none disabled:cursor-not-allowed shadow-lg"
+                    >
+                        <div class="flex flex-col items-center justify-center leading-tight">
+                            <span class="flex items-center space-x-2">
+                                <font-awesome-icon :icon="['fas', loading ? 'spinner' : 'arrow-right']" :class="loading ? 'animate-spin' : ''" />
+                                <span>Zur Zahlung (Lose reservieren)</span>
+                            </span>
+                            <span class="text-xs font-semibold mt-1">Gesamt: {{ formatPrice(totalPrice) }}</span>
+                        </div>
+                    </button>
+                    <!-- Schritt 2: Kaufen -->
+                    <button
+                        v-else
                         @click="purchaseTickets"
-                        :disabled="loading || quantity <= 0 || quantity > raffle.tickets_available"
+                        :disabled="loading || !clientSecret"
                         class="flex-1 px-6 py-4 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 disabled:from-gray-300 disabled:to-gray-300 text-white font-bold rounded-xl transition-all duration-200 transform hover:scale-105 disabled:transform-none disabled:cursor-not-allowed shadow-lg"
                     >
                         <div class="flex items-center justify-center space-x-2">
                             <font-awesome-icon :icon="['fas', loading ? 'spinner' : 'shopping-cart']" :class="loading ? 'animate-spin' : ''" />
-                            <span v-if="!loading">{{ quantity }} Lose kaufen</span>
+                            <span v-if="!loading">Jetzt kaufen</span>
                             <span v-else>Verarbeite...</span>
                             <span v-if="!loading" class="font-black">{{ formatPrice(totalPrice) }}</span>
                         </div>
@@ -341,6 +352,8 @@ const lastIntentQuantity = ref(null);
 // Track auto update state
 const updatingIntent = ref(false);
 const page = usePage();
+// Zweistufiger Flow: Erst Mengen-Auswahl, dann Zahlung
+const paymentStep = ref(false);
 
 // Timer for reservation expiry
 const reservationTimer = ref(null);
@@ -381,7 +394,7 @@ const initStripeElements = async (opId) => {
 
 let currentIntentOpId = 0;
 const createIntent = async () => {
-    if (!props.isOpen) return; // don't create when modal closed
+    if (!props.isOpen || !paymentStep.value) return; // nur im Zahlungs-Schritt
     if (loading.value) return; // prevent overlap
     
     // Zusätzliche Authentifizierungsüberprüfung
@@ -482,6 +495,7 @@ watch(() => props.isOpen, async (open) => {
         elements.value = null;
         lastIntentQuantity.value = null;
         showTimer.value = false;
+    paymentStep.value = false;
         if (reservationTimer.value) {
             clearInterval(reservationTimer.value);
             reservationTimer.value = null;
@@ -497,7 +511,7 @@ watch(() => props.isOpen, async (open) => {
         quantity.value = props.initialQuantity;
         errorMessage.value = '';
         successMessage.value = '';
-        await createIntent();
+    // Noch kein Intent hier – erst wenn Nutzer weiter zur Zahlung geht
     }
 });
 
@@ -505,7 +519,8 @@ watch(() => props.isOpen, async (open) => {
 let qtyTimer = null;
 watch(quantity, () => {
     if (!props.isOpen) return;
-    if (!clientSecret.value) return; // no intent yet
+    if (!paymentStep.value) return; // noch nicht im Zahl-Schritt
+    if (!clientSecret.value) return; // kein intent
     if (loading.value || updatingIntent.value) return; // avoid stacking
     if (qtyTimer) clearTimeout(qtyTimer);
     qtyTimer = setTimeout(() => {
@@ -515,6 +530,13 @@ watch(quantity, () => {
         }
     }, 600); // 600ms debounce
 });
+
+// Nutzer wechselt in Zahlungs-Schritt
+const proceedToPayment = async () => {
+    if (paymentStep.value) return;
+    paymentStep.value = true;
+    await createIntent();
+};
 
 // Cleanup when user leaves page/closes tab
 const handlePageUnload = async () => {

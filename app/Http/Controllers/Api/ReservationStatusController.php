@@ -32,32 +32,38 @@ class ReservationStatusController extends Controller
             ]);
         }
 
-        // Berechne die Gesamtzahl der reservierten Tickets
+        // Berechne die Gesamtzahl der reservierten Tickets & finde älteste Pending-Order
         $reservedCount = 0;
-        $oldestOrderTime = null;
-
+        $oldestOrderCreated = null;
         foreach ($pendingOrders as $order) {
-            $ticketCount = $order->items->sum('quantity');
-            $reservedCount += $ticketCount;
-            
-            if (!$oldestOrderTime || $order->created_at->lt($oldestOrderTime)) {
-                $oldestOrderTime = $order->created_at;
+            $reservedCount += $order->items->sum('quantity');
+            if (!$oldestOrderCreated || $order->created_at->lt($oldestOrderCreated)) {
+                $oldestOrderCreated = $order->created_at; // Original Zeitpunkt NICHT mutieren
             }
         }
 
-                // Berechne wann die älteste Reservierung abläuft (5 Minuten = 300 Sekunden)
-        $expiryTime = $oldestOrderTime->addMinutes(5);
-        $timeUntilExpiry = max(0, $expiryTime->diffInSeconds(now()));
+        // Konfigurierbares Reservierungsfenster (hier 5 Minuten)
+        $reservationWindowSeconds = 5 * 60; // 300 Sekunden
+
+        // Ablaufzeit berechnen OHNE das originale Created-At zu verändern
+        $expiryTime = $oldestOrderCreated?->copy()->addSeconds($reservationWindowSeconds);
+
+        // Verbleibende Zeit bis zum Ablauf (0 falls bereits abgelaufen oder keine Reservierung)
+        $timeUntilExpiry = 0;
+        if ($expiryTime) {
+            $timeUntilExpiry = $expiryTime->isPast() ? 0 : now()->diffInSeconds($expiryTime);
+        }
 
         return response()->json([
             'has_reservations' => $reservedCount > 0,
             'reserved_count' => $reservedCount,
             'time_until_next_expiry' => $timeUntilExpiry,
             'debug_info' => [
-                'oldest_order_created' => $oldestOrderTime?->toISOString(),
+                'oldest_order_created' => $oldestOrderCreated?->toISOString(),
                 'oldest_order_expires' => $expiryTime?->toISOString(),
                 'current_time' => now()->toISOString(),
-                'oldest_order_age_seconds' => $oldestOrderTime ? now()->diffInSeconds($oldestOrderTime) : 0,
+                'oldest_order_age_seconds' => $oldestOrderCreated ? $oldestOrderCreated->diffInSeconds(now()) : 0,
+                'reservation_window_seconds' => $reservationWindowSeconds,
                 'calculated_expiry_seconds' => $timeUntilExpiry,
             ]
         ]);

@@ -90,7 +90,7 @@
                             </div>
                             <span class="text-white">
                                 <span class="font-bold text-yellow-400">{{ raffle.tickets_available }}</span>
-                                <span class="hidden sm:inline">von {{ raffle.tickets_total }} verfügbar</span>
+                                <span class="hidden sm:inline"> von {{ raffle.tickets_total }} verfügbar</span>
                                 <span class="sm:hidden">/ {{ raffle.tickets_total }}</span>
                             </span>
                         </div>

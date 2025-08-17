@@ -1,37 +1,79 @@
 <template>
-    <!-- Debug: Timer immer anzeigen -->
-    <div class="mb-4 p-3 bg-orange-50/20 backdrop-blur-sm border border-orange-300/30 rounded-xl">
-        <div class="text-xs text-orange-200/60 mb-2">
-            [DEBUG] showTimer: {{ showTimer }} | hasReservedTickets: {{ hasReservedTickets }} | reservedTickets: {{ reservedTickets }} | timeRemaining: {{ timeRemaining }}
-        </div>
-        <div class="text-xs text-orange-200/60 mb-2" v-if="lastApiResponse">
-            [API] Reserved: {{ lastApiResponse.reserved_count }} | Time: {{ lastApiResponse.time_until_next_expiry }}s | Has: {{ lastApiResponse.has_reservations }}
-        </div>
-        <div class="text-xs text-orange-200/60 mb-2" v-if="lastApiResponse?.debug_info">
-            [DEBUG] Order Age: {{ lastApiResponse.debug_info.oldest_order_age_seconds }}s | Calc Expiry: {{ lastApiResponse.debug_info.calculated_expiry_seconds }}s
-        </div>
-        <div class="text-xs text-orange-200/60 mb-2">
-            [API] Raw response: {{ JSON.stringify(lastApiResponse) }}
-        </div>
-        
-        <div v-if="showTimer && hasReservedTickets">
-            <div class="flex items-center justify-between text-sm">
-                <div class="flex items-center space-x-2 text-orange-200">
-                    <font-awesome-icon :icon="['fas', 'clock']" class="animate-pulse" />
-                    <span class="font-semibold">Reservierte Lose werden frei in:</span>
-                </div>
-                <div class="font-mono font-bold text-orange-100 text-lg">
-                    {{ formatTime(timeRemaining) }}
-                </div>
+    <div class="mb-4 sm:mb-6 p-3 sm:p-5 bg-gradient-to-r from-amber-50 to-orange-50 border-l-4 border-amber-400 rounded-xl shadow-sm" v-if="showTimer && hasReservedTickets">
+        <!-- Header mit Icon und Titel -->
+        <div class="flex items-start space-x-2 sm:space-x-3 mb-3">
+            <div class="flex-shrink-0 p-1.5 sm:p-2 bg-amber-100 rounded-full">
+                <font-awesome-icon :icon="['fas', 'hourglass-half']" class="text-amber-600 text-base sm:text-lg animate-pulse" />
             </div>
-            <div class="mt-2 text-xs text-orange-200/80">
-                <span class="font-semibold">{{ reservedTickets }}</span> Lose werden gerade reserviert - 
-                diese könnten bald wieder verfügbar werden.
+            <div class="flex-1 min-w-0">
+                <h3 class="font-bold text-amber-800 text-base sm:text-lg leading-tight">Lose werden bald wieder verfügbar</h3>
+                <p class="text-xs sm:text-sm text-amber-700/80 mt-1 leading-relaxed">
+                    Andere Nutzer haben aktuell Lose reserviert, die noch nicht bezahlt wurden
+                </p>
             </div>
         </div>
-        
-        <div v-else class="text-xs text-orange-200/60">
-            Keine Reservierungen aktiv
+
+        <!-- Countdown und Anzahl -->
+        <div class="bg-white/60 rounded-lg p-3 sm:p-4 border border-amber-200/50">
+            <!-- Mobile: Gestapeltes Layout -->
+            <div class="block sm:hidden space-y-3">
+                <div class="text-center">
+                    <div class="flex items-center justify-center space-x-2 mb-2">
+                        <div class="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
+                        <span class="text-sm font-semibold text-amber-800">Nächste Freigabe in:</span>
+                    </div>
+                    <div class="font-mono font-black text-xl text-amber-700 bg-amber-100 px-4 py-2 rounded-lg">
+                        {{ formatTime(timeRemaining) }}
+                    </div>
+                </div>
+                
+                <div class="flex items-center justify-center space-x-2 text-sm">
+                    <span class="text-amber-700">Reservierte Lose:</span>
+                    <div class="bg-amber-500 text-white px-2 py-1 rounded-full text-xs font-bold">
+                        {{ reservedTickets }}
+                    </div>
+                    <span class="text-amber-600 font-medium">
+                        {{ reservedTickets === 1 ? 'Los' : 'Lose' }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Desktop: Nebeneinander Layout -->
+            <div class="hidden sm:block">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
+                        <span class="font-semibold text-amber-800">Nächste Freigabe in:</span>
+                    </div>
+                    <div class="font-mono font-black text-2xl text-amber-700 bg-amber-100 px-3 py-1 rounded-lg">
+                        {{ formatTime(timeRemaining) }}
+                    </div>
+                </div>
+                
+                <div class="flex items-center justify-between text-sm">
+                    <span class="text-amber-700">Reservierte Lose:</span>
+                    <div class="flex items-center space-x-2">
+                        <div class="bg-amber-500 text-white px-2 py-1 rounded-full text-xs font-bold">
+                            {{ reservedTickets }}
+                        </div>
+                        <span class="text-amber-600 font-medium">
+                            {{ reservedTickets === 1 ? 'Los' : 'Lose' }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Erklärungstext -->
+        <div class="mt-3 text-xs sm:text-xs text-amber-600/90 bg-amber-50/50 rounded-lg p-2 sm:p-3 border border-amber-200/30">
+            <div class="flex items-start space-x-2">
+                <font-awesome-icon :icon="['fas', 'info-circle']" class="text-amber-500 mt-0.5 flex-shrink-0 text-xs sm:text-sm" />
+                <div class="leading-relaxed">
+                    <strong>Was bedeutet das?</strong> Wenn jemand Lose in den Warenkorb legt, werden sie für 
+                    <span class="font-semibold">5 Minuten reserviert</span>. Falls die Zahlung nicht abgeschlossen wird, 
+                    stehen die Lose automatisch wieder zum Kauf zur Verfügung.
+                </div>
+            </div>
         </div>
     </div>
 </template>
@@ -60,8 +102,9 @@ const hasReservedTickets = computed(() => reservedTickets.value > 0);
 
 // Methods
 const formatTime = (seconds) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
+    const total = Math.max(0, Math.floor(seconds));
+    const minutes = Math.floor(total / 60);
+    const remainingSeconds = total % 60;
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
 };
 
@@ -78,7 +121,8 @@ const fetchReservedTicketsInfo = async () => {
         
         if (data.has_reservations) {
             reservedTickets.value = data.reserved_count;
-            timeRemaining.value = data.time_until_next_expiry;
+            // API kann Float liefern -> aufrunden, damit Nutzer volle Sekunde sieht
+            timeRemaining.value = Math.ceil(data.time_until_next_expiry || 0);
             
             console.log(`[ReservationTimer] Found ${data.reserved_count} reserved tickets, ${data.time_until_next_expiry}s remaining`);
             
@@ -123,11 +167,9 @@ const startCountdown = () => {
     }
     
     countdownTimer.value = setInterval(() => {
-        timeRemaining.value--;
-        
+        timeRemaining.value = Math.max(0, timeRemaining.value - 1);
         if (timeRemaining.value <= 0) {
             stopCountdown();
-            // Nach Ablauf erneut prüfen
             fetchReservedTicketsInfo();
         }
     }, 1000);
