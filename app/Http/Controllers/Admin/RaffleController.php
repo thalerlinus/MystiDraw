@@ -10,6 +10,8 @@ use App\Models\Product;
 use Inertia\Inertia;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 class RaffleController extends Controller
 {
@@ -183,5 +185,57 @@ class RaffleController extends Controller
             ]);
         }
         return back()->with('success','Gespeichert');
+    }
+
+    /**
+     * Verschenkt (erstellt) eine Anzahl Tickets einer Raffle an einen Benutzer ohne Bezahlung.
+     */
+    public function giftTickets(Request $request, Raffle $raffle)
+    {
+        $data = $request->validate([
+            'user_id' => ['required','exists:users,id'],
+            'quantity' => ['required','integer','min:1','max:1000'],
+        ]);
+
+        $user = User::findOrFail($data['user_id']);
+        $qty = (int)$data['quantity'];
+
+        try {
+            DB::transaction(function () use ($raffle, $user, $qty) {
+                // Kapazität prüfen: Falls raffle.tickets_total gesetzt und Items vorhanden
+                $totalFromItems = $raffle->items()->sum('quantity_total');
+                if ((int)$raffle->tickets_total === 0 && $totalFromItems > 0) {
+                    // initialisiere falls noch nicht gesetzt
+                    $raffle->update(['tickets_total' => $totalFromItems]);
+                }
+                if ($totalFromItems > 0) {
+                    $issued = $raffle->tickets()->count();
+                    if ($issued + $qty > $totalFromItems) {
+                        abort(422, 'Kapazitätsgrenze überschritten: Es sind nicht genug Tickets verfügbar.');
+                    }
+                }
+                // Globale Serial Basis
+                $base = (int) (DB::table('tickets')->max('serial') ?? 0);
+                $insert = [];
+        for ($i=1; $i <= $qty; $i++) {
+                    $insert[] = [
+                        'raffle_id' => $raffle->id,
+                        'user_id' => $user->id,
+            'order_id' => null, // nullable for gifted
+                        'serial' => $base + $i,
+                        'price_paid' => 0,
+                        // Damit der normale Flow (z.B. Öffnen) identisch funktioniert nutzen wir 'paid'
+                        'status' => 'paid',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }
+                DB::table('tickets')->insert($insert);
+                $raffle->increment('tickets_sold', $qty);
+            });
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Fehler beim Verschenken: '.$e->getMessage());
+        }
+        return back()->with('success', $qty.' Ticket(s) an '.$user->email.' verschenkt.');
     }
 }

@@ -4,6 +4,7 @@ import AdminLayout from '@/Layouts/AdminLayout.vue';
 import { ref, computed } from 'vue';
 import { getImageUrl } from '@/utils/cdn';
 import ProductSelect from '@/Components/ProductSelect.vue';
+import GiftTicketsForm from '@/Components/GiftTicketsForm.vue';
 
 const page = usePage();
 const raffle = page.props.raffle;
@@ -168,5 +169,11 @@ function submit(){
         <button :disabled="form.processing" class="rounded bg-indigo-600 px-4 py-2 text-white disabled:opacity-50">Speichern</button>
       </div>
     </form>
+
+    <!-- Gift Tickets -->
+    <div class="mt-12 max-w-3xl border-t pt-8">
+      <h2 class="text-lg font-semibold mb-4">Tickets verschenken</h2>
+      <GiftTicketsForm :raffle-id="raffle.id" />
+    </div>
   </AdminLayout>
 </template>

@@ -10,7 +10,7 @@ class Raffle extends Model
     use HasFactory;
 
     protected $fillable = [
-        'name','slug','status','starts_at','ends_at','base_ticket_price','currency','public_stats','category_id'
+    'name','slug','status','starts_at','ends_at','base_ticket_price','currency','public_stats','category_id','tickets_total','tickets_sold'
     ];
 
     protected function casts(): array

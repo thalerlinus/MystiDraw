@@ -102,4 +102,8 @@ Route::middleware(['auth', 'verified', 'admin'])
         Route::resource('orders', \App\Http\Controllers\Admin\OrderController::class)->only(['index', 'show']);
     Route::resource('shipments', \App\Http\Controllers\Admin\ShipmentController::class)->only(['index', 'show','update']);
         Route::get('inventory', [\App\Http\Controllers\Admin\InventoryController::class, 'index'])->name('inventory.index');
+    // Tickets an Nutzer verschenken (Admin)
+    Route::post('raffles/{raffle}/gift', [\App\Http\Controllers\Admin\RaffleController::class, 'giftTickets'])->name('raffles.gift');
+    // User Suche (für Dropdown)
+    Route::get('users/search', \App\Http\Controllers\Admin\UserSearchController::class)->name('users.search');
     });
