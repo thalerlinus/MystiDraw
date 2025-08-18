@@ -1,5 +1,5 @@
 <template>
-  <div class="relative bg-white rounded-xl shadow-lg overflow-hidden group hover:shadow-xl transition-all duration-300 border border-slate-200">
+  <div ref="rootEl" class="relative bg-white rounded-xl shadow-lg overflow-hidden group hover:shadow-xl transition-all duration-300 border border-slate-200">
     <!-- Header mit Kategorie -->
     <div class="bg-gradient-to-r from-slate-900 to-slate-800 text-white px-6 py-4">
       <div class="flex items-center justify-between">
@@ -15,7 +15,7 @@
     </div>
 
     <!-- Bild Carousel -->
-    <div class="relative h-64 overflow-hidden">
+    <div class="relative h-64 overflow-hidden" role="region" :aria-label="`Bilder Karussell für ${raffle.name}`">
       <!-- Sold Out Overlay -->
       <div 
         v-if="isSoldOut"
@@ -32,6 +32,7 @@
         class="flex transition-transform duration-500 ease-in-out h-full"
         :style="{ transform: `translateX(-${currentImageIndex * 100}%)` }"
         :class="{ 'filter grayscale': isSoldOut }"
+        aria-live="polite"
       >
         <div 
           v-for="item in raffle.items" 
@@ -44,6 +45,12 @@
             :alt="item.product.name"
             class="w-full h-full object-contain bg-white"
             loading="lazy"
+            decoding="async"
+            fetchpriority="low"
+            width="512"
+            height="512"
+            :srcset="buildSrcSet(item.product.images[0].path, pullZone)"
+            :sizes="sizesAttr('(max-width: 1024px) 100vw, 33vw')"
           />
           <div 
             v-else
@@ -90,17 +97,29 @@
       <!-- Navigation Dots -->
       <div 
         v-if="raffle.items && raffle.items.length > 1"
-        class="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2"
+        class="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-1.5"
+        role="tablist"
+        :aria-label="`Bild Auswahl für ${raffle.name}`"
       >
         <button
           v-for="(item, index) in raffle.items"
           :key="index"
           @click="currentImageIndex = index"
-          class="w-3 h-3 rounded-full transition-all duration-300"
-          :class="index === currentImageIndex 
-            ? 'bg-white scale-125' 
-            : 'bg-white/50 hover:bg-white/75'"
-        ></button>
+          class="group p-4 rounded-full transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+          role="tab"
+          :aria-selected="(index === currentImageIndex).toString()"
+          :tabindex="index === currentImageIndex ? 0 : -1"
+          :aria-label="`Zeige Bild ${index + 1} von ${raffle.items.length}`"
+          type="button"
+        >
+          <span
+            aria-hidden="true"
+            class="block w-3 h-3 rounded-full transition-all duration-300"
+            :class="index === currentImageIndex 
+              ? 'bg-white scale-125' 
+              : 'bg-white/50 group-hover:bg-white/75'"
+          ></span>
+        </button>
       </div>
 
       <!-- Navigation Arrows -->
@@ -108,8 +127,10 @@
         v-if="raffle.items && raffle.items.length > 1"
         @click="previousImage"
         class="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full transition-all duration-300 opacity-0 group-hover:opacity-100"
+        aria-label="Vorheriges Bild"
+        type="button"
       >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
         </svg>
       </button>
@@ -118,8 +139,10 @@
         v-if="raffle.items && raffle.items.length > 1"
         @click="nextImage"
         class="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full transition-all duration-300 opacity-0 group-hover:opacity-100"
+        aria-label="Nächstes Bild"
+        type="button"
       >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
         </svg>
       </button>
@@ -159,6 +182,8 @@
         @click="$emit('selectRaffle', raffle)"
         :disabled="!canPurchase"
         :class="getButtonClass()"
+        :aria-label="actionAriaLabel"
+        type="button"
       >
         <span v-if="isSoldOut" class="flex items-center justify-center gap-2">
           <font-awesome-icon :icon="['fas', 'ban']" />
@@ -176,7 +201,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue';
-import { getThumbUrl, getImageUrl } from '@/utils/cdn';
+import { getThumbUrl, getImageUrl, buildSrcSet, sizesAttr } from '@/utils/cdn';
 
 const props = defineProps({
   raffle: { type: Object, required: true },
@@ -187,13 +212,28 @@ defineEmits(['selectRaffle']);
 
 const currentImageIndex = ref(0);
 let imageInterval;
+// Root element ref for IntersectionObserver
+const rootEl = ref(null);
 
-// Auto-rotate images
+// Auto-rotate images only after carousel is visible (reduces initial main thread work)
 onMounted(() => {
-  if (props.raffle.items && props.raffle.items.length > 1) {
-    imageInterval = setInterval(() => {
-      nextImage();
-    }, 4000);
+  if (!(props.raffle.items && props.raffle.items.length > 1)) return;
+  const start = () => {
+    if (imageInterval) return;
+    imageInterval = setInterval(() => { nextImage(); }, 4500);
+  };
+  if ('IntersectionObserver' in window) {
+    const obs = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting) { start(); obs.disconnect(); }
+      });
+    }, { rootMargin: '100px' });
+    if (rootEl.value instanceof Element) {
+      obs.observe(rootEl.value);
+    }
+  } else {
+    // Fallback: delay start
+    setTimeout(start, 2000);
   }
 });
 
@@ -314,4 +354,11 @@ function resolveImage(img){
   const thumb = getThumbUrl(base, props.pullZone);
   return thumb || getImageUrl(base, props.pullZone);
 }
+
+const actionAriaLabel = computed(() => {
+  const name = props.raffle?.name || 'Raffle';
+  if (isSoldOut.value) return `Raffle ${name} ausverkauft`;
+  if (normalizedStatus.value === 'active') return `Lose für Raffle ${name} kaufen`;
+  return `Raffle ${name} nicht verfügbar`;
+});
 </script>

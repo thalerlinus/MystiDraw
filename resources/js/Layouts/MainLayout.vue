@@ -1,8 +1,22 @@
 <script setup>
 import { Head } from '@inertiajs/vue3';
 import Navbar from '@/Components/Navbar.vue';
-import Footer from '@/Components/Footer.vue';
-import CookieConsent from '@/Components/CookieConsent.vue';
+import { defineAsyncComponent, ref, onMounted } from 'vue';
+
+// Lazy load heavier below-the-fold layout pieces
+const Footer = defineAsyncComponent(() => import('@/Components/Footer.vue'));
+const CookieConsent = defineAsyncComponent(() => import('@/Components/CookieConsent.vue'));
+const showDeferred = ref(false);
+onMounted(() => {
+    requestAnimationFrame(() => {
+        // Use requestIdleCallback when available with proper options; fallback to setTimeout otherwise
+        if (typeof window.requestIdleCallback === 'function') {
+            window.requestIdleCallback(() => { showDeferred.value = true; }, { timeout: 1200 });
+        } else {
+            setTimeout(() => { showDeferred.value = true; }, 800);
+        }
+    });
+});
 
 defineProps({
     title: {
@@ -45,9 +59,8 @@ defineProps({
         </main>
 
         <!-- Footer -->
-        <Footer v-if="showFooter" />
-        
-        <!-- Cookie Consent -->
-        <CookieConsent />
+    <Footer v-if="showFooter && showDeferred" />
+    <!-- Cookie Consent -->
+    <CookieConsent v-if="showDeferred" />
     </div>
 </template>

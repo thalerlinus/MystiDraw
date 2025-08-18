@@ -11,6 +11,10 @@ use App\Http\Controllers\RafflePurchaseController;
 use App\Http\Controllers\ShippingPurchaseController;
 use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\TicketOpeningController;
+// Sitemap
+use Spatie\Sitemap\Sitemap;
+use Spatie\Sitemap\Tags\Url;
+use App\Models\Raffle;
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/raffles', [RaffleBrowseController::class, 'index'])->name('raffles.index');
@@ -100,10 +104,106 @@ Route::middleware(['auth', 'verified', 'admin'])
         Route::put('products/{product}/images/{image}', [\App\Http\Controllers\Admin\ProductImageController::class, 'update'])->name('products.images.update');
         Route::delete('products/{product}/images/{image}', [\App\Http\Controllers\Admin\ProductImageController::class, 'destroy'])->name('products.images.destroy');
         Route::resource('orders', \App\Http\Controllers\Admin\OrderController::class)->only(['index', 'show']);
-    Route::resource('shipments', \App\Http\Controllers\Admin\ShipmentController::class)->only(['index', 'show','update']);
+        Route::resource('shipments', \App\Http\Controllers\Admin\ShipmentController::class)->only(['index', 'show', 'update']);
         Route::get('inventory', [\App\Http\Controllers\Admin\InventoryController::class, 'index'])->name('inventory.index');
-    // Tickets an Nutzer verschenken (Admin)
-    Route::post('raffles/{raffle}/gift', [\App\Http\Controllers\Admin\RaffleController::class, 'giftTickets'])->name('raffles.gift');
-    // User Suche (für Dropdown)
-    Route::get('users/search', \App\Http\Controllers\Admin\UserSearchController::class)->name('users.search');
+        // Tickets an Nutzer verschenken (Admin)
+        Route::post('raffles/{raffle}/gift', [\App\Http\Controllers\Admin\RaffleController::class, 'giftTickets'])->name('raffles.gift');
+        // User Suche (für Dropdown)
+        Route::get('users/search', \App\Http\Controllers\Admin\UserSearchController::class)->name('users.search');
     });
+
+// Dynamic robots.txt (production vs non-production behavior)
+Route::get('/robots.txt', function () {
+    $base = rtrim(config('app.url'), '/');
+    $lines = [];
+    $env = app()->environment();
+    if ($env !== 'production') {
+        // Block everything outside production to avoid duplicate indexing
+        $lines[] = 'User-agent: *';
+        $lines[] = 'Disallow: /';
+        $lines[] = '# Non-production environment (' . $env . ') – indexing disabled';
+    } else {
+        $disallows = [
+            '/admin',
+            '/dashboard',
+            '/profile',
+            '/tickets',
+            '/inventory',
+            '/checkout',
+            '/shipping',
+            '/api',
+        ];
+        $lines[] = 'User-agent: *';
+        foreach ($disallows as $path) {
+            $lines[] = 'Disallow: ' . $path;
+        }
+        // (Optional explicit allow; not strictly needed but documents intent)
+        $lines[] = 'Allow: /build/';
+        $lines[] = 'Allow: /images/';
+    }
+    $lines[] = '';
+    $lines[] = 'Sitemap: ' . $base . '/sitemap.xml';
+    $lines[] = 'Sitemap: ' . $base . '/sitemap.xml.gz';
+    return response(implode("\n", $lines), 200)->header('Content-Type', 'text/plain');
+});
+
+
+
+Route::get('/sitemap.xml', function () {
+    $ttl = 600; // seconds caching (10 min). Adjust if needed.
+    $xml = cache()->remember('sitemap.xml.v1', $ttl, function () {
+        $map = Sitemap::create();
+
+        // Latest raffle update for home lastmod (fallback now())
+        $latest = Raffle::orderByDesc('updated_at')->first();
+        $homeUrl = Url::create(route('home'))
+            ->setPriority(1.0)
+            ->setChangeFrequency(Url::CHANGE_FREQUENCY_DAILY);
+        if ($latest) {
+            $homeUrl->setLastModificationDate($latest->updated_at);
+        }
+        $map->add($homeUrl);
+
+        $map->add(Url::create(route('raffles.index'))->setPriority(0.9)->setChangeFrequency(Url::CHANGE_FREQUENCY_DAILY));
+        foreach (['impressum', 'datenschutz', 'agb', 'cookie-policy'] as $static) {
+            if (Route::has($static)) {
+                $map->add(Url::create(route($static))->setChangeFrequency(Url::CHANGE_FREQUENCY_MONTHLY)->setPriority(0.3));
+            }
+        }
+
+        // Include live & scheduled raffles (scheduled may build pre-indexing buzz)
+        Raffle::query()
+            ->whereIn('status', ['live', 'scheduled'])
+            ->orderByDesc('updated_at')
+            ->chunk(200, function ($chunk) use ($map) {
+                /** @var Raffle $r */
+                foreach ($chunk as $r) {
+                    $url = Url::create(route('raffles.show', $r->slug))
+                        ->setLastModificationDate($r->updated_at)
+                        ->setPriority($r->status === 'live' ? 0.8 : 0.6)
+                        ->setChangeFrequency($r->status === 'live' ? Url::CHANGE_FREQUENCY_HOURLY : Url::CHANGE_FREQUENCY_DAILY);
+                    $map->add($url);
+                }
+            });
+
+        return $map->render();
+    });
+
+    return response($xml, 200)
+        ->header('Content-Type', 'application/xml')
+        ->header('Cache-Control', 'public, max-age=300');
+});
+
+// Gzipped variant (optional — some crawlers will use it if linked)
+Route::get('/sitemap.xml.gz', function () {
+    $raw = app('router')->getRoutes()->getByName('generated.sitemap.raw')
+        ? '' : null; // placeholder (we reuse cache key directly)
+    $xml = cache('sitemap.xml.v1') ?: redirect('/sitemap.xml');
+    if ($xml instanceof \Illuminate\Http\RedirectResponse)
+        return $xml; // ensure xml string
+    $gz = gzencode($xml, 5);
+    return response($gz, 200)
+        ->header('Content-Type', 'application/gzip')
+        ->header('Content-Encoding', 'gzip')
+        ->header('Cache-Control', 'public, max-age=300');
+});

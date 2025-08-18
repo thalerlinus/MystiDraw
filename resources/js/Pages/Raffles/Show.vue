@@ -3,6 +3,29 @@
         :title="`${raffle.name} - MystiDraw`" 
         :user="$page.props.auth?.user"
     >
+        <!-- SEO Meta Head -->
+        <Head>
+            <title>{{ seo.title }}</title>
+            <meta name="description" :content="seo.description" />
+            <link rel="canonical" :href="seo.canonical" />
+
+            <!-- Open Graph -->
+            <meta property="og:type" content="website" />
+            <meta property="og:site_name" content="MystiDraw" />
+            <meta property="og:title" :content="seo.title" />
+            <meta property="og:description" :content="seo.description" />
+            <meta property="og:url" :content="seo.canonical" />
+            <meta v-if="seo.image" property="og:image" :content="seo.image" />
+            <meta v-if="seo.imageWidth" property="og:image:width" :content="seo.imageWidth" />
+            <meta v-if="seo.imageHeight" property="og:image:height" :content="seo.imageHeight" />
+
+            <!-- Twitter -->
+            <meta name="twitter:card" content="summary_large_image" />
+            <meta name="twitter:title" :content="seo.title" />
+            <meta name="twitter:description" :content="seo.description" />
+            <meta v-if="seo.image" name="twitter:image" :content="seo.image" />
+        </Head>
+    <JsonLd v-if="$page.props.jsonLd" :json="$page.props.jsonLd" :key="`raffle-${raffle.id}`" />
         <!-- Hero Section mit Kategorie-Bild -->
         <div class="relative min-h-[300px] sm:min-h-[400px] md:min-h-[500px] overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800">
             <!-- Hero Background -->
@@ -572,7 +595,8 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { Link, usePage } from '@inertiajs/vue3';
+import { Link, usePage, Head } from '@inertiajs/vue3';
+import JsonLd from '@/Components/JsonLd.vue';
 import MainLayout from '@/Layouts/MainLayout.vue';
 import ProductImageGallery from '@/Components/ProductImageGallery.vue';
 import TicketPurchaseModal from '@/Components/TicketPurchaseModal.vue';
@@ -585,6 +609,26 @@ const route = window.route;
 const props = defineProps({
     raffle: { type: Object, required: true },
     bunny: { type: Object, default: () => ({}) }
+});
+
+// SEO meta data
+const seo = computed(() => {
+    const title = `${props.raffle.name} – MystiDraw`;
+    const description = props.raffle.seo_description || `Zieh jetzt Tickets für ${props.raffle.name} und sichere dir garantierte Gewinne in verschiedenen Kategorien!`;
+    // canonical via route helper (string) - ensure absolute URL if app provides base in window.APP_URL
+    const base = (typeof window !== 'undefined' && window.APP_URL) ? window.APP_URL.replace(/\/$/, '') : '';
+    const canonical = base + route('raffles.show', props.raffle.slug);
+    // Attempt to pick best cover image: raffle.cover_url or first product image
+    let image = props.raffle.cover_url || props.raffle.category?.hero_image_path ? getImageUrl(props.raffle.category.hero_image_path, props.bunny.pull_zone) : null;
+    if (!image && props.raffle.items?.length) {
+        const firstWithProduct = props.raffle.items.find(i => i.product?.images?.length);
+        if (firstWithProduct) {
+            const img = firstWithProduct.product.images[0];
+            // assuming image.path exists
+            image = img?.path ? getImageUrl(img.path, props.bunny.pull_zone) : null;
+        }
+    }
+    return { title, description, canonical, image, imageWidth: 1200, imageHeight: 630 };
 });
 
 // Reactive data

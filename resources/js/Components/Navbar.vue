@@ -136,7 +136,7 @@ onUnmounted(() => {
                 <!-- Right side actions -->
                 <div class="hidden lg:flex lg:items-center lg:space-x-3">
                     <!-- Ungeöffnete Tickets -->
-                    <template v-if="$page.props.auth.user">
+                    <template v-if="$page.props.auth && $page.props.auth.user">
                         <Link 
                             href="/tickets"
                             class="relative p-2 text-navy-500 hover:text-navy-900 transition-colors duration-300 rounded-full hover:bg-navy-50 group"
@@ -174,11 +174,11 @@ onUnmounted(() => {
                                 >
                                     <div class="w-8 h-8 bg-navy-gradient rounded-full flex items-center justify-center">
                                         <span class="text-gold-400 text-sm font-semibold">
-                                            {{ $page.props.auth.user ? $page.props.auth.user.name.charAt(0).toUpperCase() : 'G' }}
+                                            {{ $page.props.auth && $page.props.auth.user ? $page.props.auth.user.name.charAt(0).toUpperCase() : 'G' }}
                                         </span>
                                     </div>
                                     <span class="hidden md:block">
-                                        {{ $page.props.auth.user ? $page.props.auth.user.name : 'Gast' }}
+                                        {{ $page.props.auth && $page.props.auth.user ? $page.props.auth.user.name : 'Gast' }}
                                     </span>
                                     <svg class="w-4 h-4 text-navy-400 group-hover:text-navy-600 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -188,8 +188,8 @@ onUnmounted(() => {
 
                             <template #content>
                                 <div class="py-2">
-                                    <template v-if="$page.props.auth.user">
-                                        <div class="px-4 py-2 border-b border-navy-100">
+                                    <template v-if="$page.props.auth && $page.props.auth.user">
+                                        <div class="flex items-center space-x-3 px-4 py-3 border-b border-navy-100">
                                             <p class="text-sm font-medium text-navy-900">{{ $page.props.auth.user.name }}</p>
                                             <p class="text-xs text-navy-500">{{ $page.props.auth.user.email }}</p>
                                         </div>
@@ -240,8 +240,11 @@ onUnmounted(() => {
                     <button
                         @click="showingNavigationDropdown = !showingNavigationDropdown"
                         class="inline-flex items-center justify-center p-2 rounded-full text-navy-400 hover:text-navy-600 hover:bg-navy-100 focus:outline-none focus:bg-navy-100 focus:text-navy-600 transition-all duration-300"
+                        :aria-expanded="showingNavigationDropdown.toString()"
+                        :aria-label="showingNavigationDropdown ? 'Menü schließen' : 'Menü öffnen'"
+                        :title="showingNavigationDropdown ? 'Menü schließen' : 'Menü öffnen'"
                     >
-                        <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                        <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                             <path
                                 :class="{
                                     hidden: showingNavigationDropdown,
@@ -316,7 +319,7 @@ onUnmounted(() => {
 
             <!-- Mobile User Menu -->
             <div class="px-4 py-4 border-t border-navy-200/50">
-                <template v-if="$page.props.auth.user">
+                <template v-if="$page.props.auth && $page.props.auth.user">
                     <div class="flex items-center space-x-3 px-4 py-3 bg-navy-50 rounded-lg mb-3">
                         <div class="w-10 h-10 bg-navy-gradient rounded-full flex items-center justify-center">
                             <span class="text-gold-400 font-semibold">

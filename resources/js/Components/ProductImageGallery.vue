@@ -6,6 +6,13 @@
       :src="getThumbUrl(product.images[0].path, pullZone)" 
       :alt="product.name"
       class="max-w-full max-h-full object-contain hover:scale-105 transition-transform duration-300"
+      loading="lazy"
+      decoding="async"
+      fetchpriority="low"
+      width="400"
+      height="400"
+      :srcset="buildSrcSet(product.images[0].path, pullZone)"
+      :sizes="sizesAttr('(max-width: 768px) 50vw, 25vw')"
     />
     <div v-else class="text-gray-500 text-center">
       <svg class="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -51,6 +58,12 @@
               :src="getImageUrl(product.images[currentImageIndex].path, pullZone)"
               :alt="`${product.name} - Bild ${currentImageIndex + 1}`"
               class="max-w-full max-h-full object-contain"
+              loading="eager"
+              decoding="async"
+              width="800"
+              height="800"
+              :srcset="buildSrcSet(product.images[currentImageIndex].path, pullZone)"
+              :sizes="sizesAttr('(max-width: 1024px) 90vw, 800px')"
             />
             
             <!-- Navigation Arrows -->
@@ -102,6 +115,10 @@
                   :src="getThumbUrl(image.path, pullZone)"
                   :alt="`${product.name} - Thumbnail ${index + 1}`"
                   class="w-full h-full object-cover"
+                  loading="lazy"
+                  decoding="async"
+                  width="64"
+                  height="64"
                 />
               </button>
             </div>
@@ -124,7 +141,7 @@
 
 <script setup>
 import { ref } from 'vue';
-import { getThumbUrl, getImageUrl } from '@/utils/cdn';
+import { getThumbUrl, getImageUrl, buildSrcSet, sizesAttr } from '@/utils/cdn';
 
 const props = defineProps({
   product: { type: Object, required: true },

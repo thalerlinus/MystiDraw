@@ -1,4 +1,6 @@
 <script setup>
+import { Head } from '@inertiajs/vue3';
+import JsonLd from '@/Components/JsonLd.vue';
 import MainLayout from '@/Layouts/MainLayout.vue';
 import RaffleCarousel from '@/Components/RaffleCarousel.vue';
 import CategoryNode from '@/Components/CategoryNode.vue';
@@ -43,10 +45,32 @@ const handleRaffleSelect = (raffle) => {
   // Navigation zur Raffle Detail-Seite
   router.get(route('raffles.show', raffle.slug));
 };
+
+// SEO helpers
+const base = (typeof window !== 'undefined' && window.APP_URL) ? window.APP_URL.replace(/\/$/, '') : '';
+const canonical = base + '/raffles';
+// Provide a default OG image (adjust path to a real asset if available)
+const defaultOgImage = base + '/images/og-default.jpg';
 </script>
 
 <template>
   <MainLayout title="Raffles" :user="$page.props.auth?.user">
+    <Head>
+      <title>Raffles – MystiDraw</title>
+      <meta name="description" content="Mystery Box Raffles mit 100% Gewinnchance – entdecke jetzt aktive Raffles in verschiedenen Kategorien und sichere dir Überraschungen!" />
+      <link rel="canonical" :href="canonical" />
+      <meta property="og:type" content="website" />
+      <meta property="og:site_name" content="MystiDraw" />
+      <meta property="og:title" content="Raffles – MystiDraw" />
+      <meta property="og:description" content="Mystery Box Raffles mit 100% Gewinnchance – entdecke jetzt aktive Raffles in verschiedenen Kategorien und sichere dir Überraschungen!" />
+      <meta property="og:url" :content="canonical" />
+      <meta property="og:image" :content="defaultOgImage" />
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:title" content="Raffles – MystiDraw" />
+      <meta name="twitter:description" content="Mystery Box Raffles mit 100% Gewinnchance – entdecke jetzt aktive Raffles in verschiedenen Kategorien und sichere dir Überraschungen!" />
+      <meta name="twitter:image" :content="defaultOgImage" />
+    </Head>
+  <JsonLd v-if="$page.props.jsonLd" :json="$page.props.jsonLd" key="raffles-list" />
     <!-- Hero Section -->
     <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 relative overflow-hidden">
       <!-- Background Pattern -->

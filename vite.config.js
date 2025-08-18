@@ -17,4 +17,18 @@ export default defineConfig({
             },
         }),
     ],
+    build: {
+        cssCodeSplit: true,
+        rollupOptions: {
+            output: {
+                manualChunks(id) {
+                    if (id.includes('node_modules')) {
+                        if (id.includes('@fortawesome')) return 'icons';
+                        if (id.includes('vue') || id.includes('@inertiajs')) return 'vendor-core';
+                        return 'vendor';
+                    }
+                }
+            }
+        }
+    }
 });

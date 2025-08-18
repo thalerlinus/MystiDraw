@@ -1,8 +1,14 @@
 <script setup>
 import MainLayout from '@/Layouts/MainLayout.vue';
-import RaffleCarousel from '@/Components/RaffleCarousel.vue';
-import { router } from '@inertiajs/vue3';
-import { onMounted, nextTick } from 'vue';
+// Lazy load heavy carousel + below-the-fold sections to reduce main thread work for initial (hero) paint / LCP
+import { defineAsyncComponent, onMounted, nextTick, ref } from 'vue';
+import { Head, router, Link } from '@inertiajs/vue3';
+
+const RaffleCarousel = defineAsyncComponent(() => import('@/Components/RaffleCarousel.vue'));
+
+// Flags to mount below-the-fold content & deferred decorative hero animations
+const showBelowFold = ref(false);
+const showDecor = ref(false);
 
 const route = window.route;
 
@@ -23,6 +29,69 @@ defineProps({
     },
 });
 
+// Site / SEO config
+const site = {
+        name: 'MystiDraw',
+        baseUrl: typeof window !== 'undefined' ? window.location.origin : 'https://mystidraw.com',
+        logo: '/images/logo.webp',
+        og: '/images/og/home-1200x630.jpg', // ensure this exists (1200x630)
+        twitter: '@MystiDraw'
+};
+
+const seo = {
+        title: 'MystiDraw – Lose ziehen, sofort gewinnen (keine Nieten)',
+        desc: 'MystiDraw ist die moderne Raffle-Plattform für Anime, Gaming & mehr. Ziehe ein Los und erhalte sofort deinen Gewinn – 100% Gewinnchance, schneller Versand aus Deutschland.',
+        canonical: site.baseUrl + '/'
+};
+
+// Structured Data objects
+const orgLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: site.name,
+    url: site.baseUrl,
+    logo: site.baseUrl + site.logo,
+    contactPoint: [{
+        '@type': 'ContactPoint',
+        contactType: 'customer support',
+        email: 'contact@mystidraw.com',
+        availableLanguage: ['de']
+    }]
+};
+
+const webSiteLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: site.name,
+    url: site.baseUrl,
+    inLanguage: 'de-DE'
+};
+
+const howToLd = {
+    '@context': 'https://schema.org',
+    '@type': 'HowTo',
+    name: 'So funktioniert MystiDraw',
+    description: 'In 3 Schritten zum garantierten Gewinn.',
+    step: [
+        { '@type': 'HowToStep', name: 'Los ziehen', text: 'Wähle ein Raffle aus Kategorien wie Anime, Gaming oder Lifestyle.', url: site.baseUrl + '/#how-it-works' },
+        { '@type': 'HowToStep', name: 'Sofort gewinnen', text: 'Nach dem Ziehen siehst du sofort deinen Gewinn. Keine Nieten.', url: site.baseUrl + '/#how-it-works' },
+        { '@type': 'HowToStep', name: 'Erhalten & Versenden', text: 'Gewinne im Inventar sammeln und für 7€ aus Deutschland versenden lassen.', url: site.baseUrl + '/#how-it-works' }
+    ],
+    totalTime: 'PT1M'
+};
+
+const faqLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: [
+        { '@type': 'Question', name: 'Wie funktioniert das Inventar-System?', acceptedAnswer: { '@type': 'Answer', text: 'Du sammelst deine Gewinne in deinem digitalen Inventar und kannst sie später als Paket versenden lassen.' } },
+        { '@type': 'Question', name: 'Wann erhalte ich meinen Gewinn?', acceptedAnswer: { '@type': 'Answer', text: 'Sofort nach dem Ziehen erfährst du deinen Gewinn. Der Versand erfolgt auf Anfrage aus deinem Inventar.' } },
+        { '@type': 'Question', name: 'Was kostet der Versand?', acceptedAnswer: { '@type': 'Answer', text: 'Der Versand kostet 7€ und erfolgt schnell und zuverlässig aus Deutschland.' } }
+    ]
+};
+
+// JSON-LD will be injected manually (no SFC <script> tag inside template / Head component restrictions)
+
 // Smooth scroll zu Abschnitten
 const scrollToSection = (sectionId) => {
     const element = document.getElementById(sectionId);
@@ -39,14 +108,69 @@ const handleRaffleSelect = (raffle) => {
 // Handle URL fragment on page load
 onMounted(() => {
     nextTick(() => {
-        const hash = window.location.hash.substring(1); // Remove the #
+        const hash = window.location.hash.substring(1);
         if (hash) {
-            // Small delay to ensure DOM is fully loaded
-            setTimeout(() => {
-                scrollToSection(hash);
-            }, 100);
+            setTimeout(() => scrollToSection(hash), 80);
         }
     });
+
+    // Defer mounting of below-the-fold sections to after first frame + idle
+    requestAnimationFrame(() => {
+        const activate = () => {
+            showBelowFold.value = true;
+            setTimeout(() => { showDecor.value = true; }, 400);
+        };
+        if ('requestIdleCallback' in window) {
+            window.requestIdleCallback(activate, { timeout: 800 });
+        } else {
+            setTimeout(activate, 600);
+        }
+    });
+
+    // Prefetch carousel chunk slightly earlier (even before mount) when user scrolls near where it will appear
+    const maybePrefetch = () => import('@/Components/RaffleCarousel.vue');
+    const rafOnceElId = 'raffles';
+    const observeTarget = () => {
+        const el = document.getElementById(rafOnceElId);
+        if (!el || !('IntersectionObserver' in window)) return;
+        const obs = new IntersectionObserver(entries => {
+            entries.forEach(e => {
+                if (e.isIntersecting) {
+                    maybePrefetch();
+                    obs.disconnect();
+                }
+            });
+        }, { rootMargin: '600px 0px' });
+        obs.observe(el);
+    };
+    // Try a few times until element exists (because it's lazily mounted)
+    let tries = 0;
+    const interval = setInterval(() => {
+        if (showBelowFold.value) {
+            observeTarget();
+        }
+        if (++tries > 10 || (showBelowFold.value && document.getElementById(rafOnceElId))) {
+            clearInterval(interval);
+        }
+    }, 300);
+
+    // Idle fallback
+    if ('requestIdleCallback' in window) {
+        window.requestIdleCallback(() => maybePrefetch(), { timeout: 2500 });
+    } else {
+        setTimeout(() => maybePrefetch(), 2500);
+    }
+
+    // Inject structured data script once (idempotent)
+    const injectJsonLd = (id, data) => {
+        if (document.head.querySelector(`script[data-jsonld-id="${id}"]`)) return;
+        const s = document.createElement('script');
+        s.type = 'application/ld+json';
+        s.setAttribute('data-jsonld-id', id);
+        s.textContent = JSON.stringify(data);
+        document.head.appendChild(s);
+    };
+    injectJsonLd('home-structured-data', [orgLd, webSiteLd, howToLd, faqLd]);
 });
 </script>
 
@@ -57,12 +181,37 @@ onMounted(() => {
         :can-login="canLogin" 
         :can-register="canRegister"
     >
+                <Head>
+                    <title>{{ seo.title }}</title>
+                    <meta name="description" :content="seo.desc" />
+                    <link rel="canonical" :href="seo.canonical" />
+                    <link rel="alternate" hreflang="de-DE" :href="seo.canonical" />
+                    <link rel="alternate" hreflang="x-default" :href="seo.canonical" />
+                    <!-- Performance Hints -->
+                    <link v-if="bunny?.pull_zone" rel="preconnect" :href="`https://${bunny.pull_zone}`" crossorigin>
+                    <link v-if="bunny?.pull_zone" rel="dns-prefetch" :href="`//${bunny.pull_zone}`">
+                    <!-- OG -->
+                    <meta property="og:type" content="website" />
+                    <meta property="og:site_name" :content="site.name" />
+                    <meta property="og:title" :content="seo.title" />
+                    <meta property="og:description" :content="seo.desc" />
+                    <meta property="og:url" :content="seo.canonical" />
+                        <meta property="og:image" :content="site.og" />
+                    <!-- Twitter -->
+                    <meta name="twitter:card" content="summary_large_image" />
+                    <meta name="twitter:title" :content="seo.title" />
+                    <meta name="twitter:description" :content="seo.desc" />
+                    <meta name="twitter:image" :content="site.og" />
+                    <meta v-if="site.twitter" name="twitter:site" :content="site.twitter" />
+                    
+                    <!-- JSON-LD injected dynamically in onMounted to satisfy Inertia Head limitations -->
+                </Head>
         <!-- Hero Section -->
-        <section id="home" class="relative bg-hero-gradient overflow-hidden min-h-screen flex items-center">
+    <section id="home" class="relative bg-hero-gradient overflow-hidden min-h-screen flex items-center">
             <div class="absolute inset-0 bg-black/10"></div>
             
-            <!-- Animated background elements -->
-            <div class="absolute inset-0 overflow-hidden">
+            <!-- Animated background elements (deferred) -->
+            <div v-if="showDecor" class="absolute inset-0 overflow-hidden" aria-hidden="true">
                 <div class="absolute -top-10 -left-10 w-40 h-40 bg-gold-400/10 rounded-full animate-float"></div>
                 <div class="absolute top-1/4 right-1/4 w-32 h-32 bg-gold-400/5 rounded-full animate-bounce"></div>
                 <div class="absolute bottom-1/4 left-1/3 w-24 h-24 bg-gold-400/10 rounded-full animate-float" style="animation-delay: 1s;"></div>
@@ -71,53 +220,66 @@ onMounted(() => {
 
             <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
                 <div class="flex justify-center mb-8">
-                    <div class="w-32 h-32 bg-white/10 backdrop-blur-sm rounded-3xl flex items-center justify-center shadow-2xl animate-glow p-4">
-                        <img src="/images/logo.webp" alt="MystiDraw Logo" class="w-full h-full object-contain filter drop-shadow-lg">
+                    <div class="w-32 h-32 bg-white/10 rounded-3xl flex items-center justify-center shadow-2xl p-4">
+                        <img src="/images/logo.webp" alt="MystiDraw – Logo" width="128" height="128" fetchpriority="high" loading="eager" decoding="async" class="w-full h-full object-contain filter drop-shadow-lg" />
                     </div>
                 </div>
                 
-                <h1 class="text-6xl md:text-8xl font-bold text-white mb-8 tracking-tight">
+                <h1 v-once class="text-6xl md:text-8xl font-bold text-white mb-8 tracking-tight" style="font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
                     Willkommen bei 
                     <span class="bg-gradient-to-r from-gold-400 to-gold-500 bg-clip-text text-transparent">MystiDraw</span>
                 </h1>
-                <p class="text-xl md:text-2xl text-navy-200 mb-12 max-w-4xl mx-auto leading-relaxed">
+                <p v-once class="text-xl md:text-2xl text-navy-200 mb-12 max-w-4xl mx-auto leading-relaxed">
                     Entdecke unsere aufregende Raffle-Plattform! Ziehe ein Los und erhalte sofort deinen Gewinn - 
                     bei uns gibt es <span class="text-gold-400 font-semibold">keine Nieten</span>, nur Gewinne verschiedener Kategorien.
                 </p>
                 
-                <div class="flex flex-col sm:flex-row gap-6 justify-center">
+                                <div class="flex flex-col sm:flex-row gap-6 justify-center">
                     <button
                         @click="scrollToSection('raffles')"
                         class="group relative px-10 py-5 bg-gold-gradient text-navy-900 font-bold rounded-full hover:shadow-2xl hover:shadow-gold-500/25 transform hover:scale-105 transition-all duration-300 overflow-hidden"
+                        type="button"
+                        aria-label="Zu den aktuellen Raffles springen"
+                        title="Zu den aktuellen Raffles"
                     >
                         <span class="absolute inset-0 bg-white/20 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></span>
                         <span class="relative flex items-center justify-center space-x-2">
                             <span>Jetzt Lose ziehen</span>
-                            <font-awesome-icon :icon="['fas', 'arrow-right']" class="w-5 h-5 transform group-hover:translate-x-1 transition-transform duration-300" />
+                            <!-- Inline arrow icon -->
+                            <svg aria-hidden="true" class="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
                         </span>
                     </button>
                     <button
                         @click="scrollToSection('how-it-works')"
                         class="group px-10 py-5 border-2 border-gold-400 text-gold-400 font-bold rounded-full hover:bg-gold-400 hover:text-navy-900 transform hover:scale-105 transition-all duration-300"
+                        type="button"
+                        aria-label="Zum Abschnitt Wie es funktioniert springen"
+                        title="Wie es funktioniert"
                     >
                         <span class="flex items-center justify-center space-x-2">
                             <span>Wie es funktioniert</span>
-                            <font-awesome-icon :icon="['fas', 'question-circle']" class="w-5 h-5 transform group-hover:rotate-12 transition-transform duration-300" />
+                            <!-- Inline question-circle replacement -->
+                            <svg aria-hidden="true" class="w-5 h-5 transition-transform duration-300 group-hover:rotate-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
                         </span>
                     </button>
                 </div>
+                                <!-- Additional internal link for crawlers -->
+                                <div class="mt-8">
+                                    <Link :href="route('raffles.index')" class="text-gold-300 underline decoration-dotted hover:decoration-solid">Alle Raffles ansehen</Link>
+                                </div>
             </div>
 
             <!-- Scroll indicator -->
             <div class="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce">
                 <div class="w-12 h-12 border-2 border-gold-400 rounded-full flex items-center justify-center">
-                    <font-awesome-icon :icon="['fas', 'chevron-down']" class="w-6 h-6 text-gold-400" />
+                    <!-- Inline chevron-down -->
+                    <svg aria-hidden="true" class="w-6 h-6 text-gold-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
                 </div>
             </div>
         </section>
 
         <!-- Active Raffles Section -->
-        <section id="raffles" class="py-20 bg-white">
+        <section v-if="showBelowFold" id="raffles" class="py-20 bg-white" style="content-visibility:auto;contain-intrinsic-size:1200px;" v-once>
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="text-center mb-16">
                     <h2 class="text-5xl md:text-6xl font-bold text-navy-900 mb-6">Aktuelle Raffles</h2>
@@ -126,7 +288,7 @@ onMounted(() => {
                     </p>
                 </div>
 
-                <div v-if="activeRaffles.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
+                <div v-if="activeRaffles.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8" v-once>
                     <RaffleCarousel 
                         v-for="raffle in activeRaffles" 
                         :key="raffle.id"
@@ -136,7 +298,7 @@ onMounted(() => {
                     />
                 </div>
 
-                <div v-else class="text-center py-16">
+                <div v-else class="text-center py-16" v-once>
                     <div class="w-24 h-24 bg-navy-100 rounded-full flex items-center justify-center mx-auto mb-6">
                         <font-awesome-icon :icon="['fas', 'gift']" class="w-12 h-12 text-navy-600" />
                     </div>
@@ -147,7 +309,7 @@ onMounted(() => {
         </section>
 
         <!-- How It Works Section -->
-        <section id="how-it-works" class="py-20 bg-gradient-to-br from-navy-50 via-white to-gold-50">
+    <section v-if="showBelowFold" id="how-it-works" class="py-20 bg-gradient-to-br from-navy-50 via-white to-gold-50" style="content-visibility:auto;contain-intrinsic-size:1400px;" v-once>
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="text-center mb-16">
                     <h2 class="text-5xl md:text-6xl font-bold text-navy-900 mb-6">So funktioniert's</h2>
@@ -156,15 +318,16 @@ onMounted(() => {
                     </p>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-12">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-12" v-once>
                     <!-- Schritt 1 -->
                     <div class="text-center group">
                         <div class="relative mb-8">
                             <div class="w-32 h-32 bg-navy-gradient rounded-3xl flex items-center justify-center mx-auto shadow-2xl group-hover:shadow-navy-500/25 transform group-hover:scale-110 transition-all duration-300">
                                 <span class="text-white text-4xl font-bold">1</span>
                             </div>
-                            <div class="absolute -top-4 -right-4 w-12 h-12 bg-gold-gradient rounded-2xl flex items-center justify-center shadow-lg animate-glow">
-                                <font-awesome-icon :icon="['fas', 'gift']" class="w-6 h-6 text-navy-900" />
+                            <div class="absolute -top-4 -right-4 w-12 h-12 bg-gold-gradient rounded-2xl flex items-center justify-center shadow-lg animate-glow" aria-hidden="true">
+                                <!-- Gift inline icon -->
+                                <svg class="w-6 h-6 text-navy-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M16 8v13"/><path d="M8 8v13"/><path d="M3 12h18"/><path d="M12 8s-3.5-.5-3.5-3A2.5 2.5 0 0112 6.5 2.5 2.5 0 0115.5 5c0 2.5-3.5 3-3.5 3z"/></svg>
                             </div>
                         </div>
                         <h3 class="text-2xl font-bold text-navy-900 mb-4">Los ziehen</h3>
@@ -177,8 +340,9 @@ onMounted(() => {
                             <div class="w-32 h-32 bg-navy-gradient rounded-3xl flex items-center justify-center mx-auto shadow-2xl group-hover:shadow-navy-500/25 transform group-hover:scale-110 transition-all duration-300">
                                 <span class="text-white text-4xl font-bold">2</span>
                             </div>
-                            <div class="absolute -top-4 -right-4 w-12 h-12 bg-gold-gradient rounded-2xl flex items-center justify-center shadow-lg animate-glow">
-                                <font-awesome-icon :icon="['fas', 'bolt']" class="w-6 h-6 text-navy-900" />
+                            <div class="absolute -top-4 -right-4 w-12 h-12 bg-gold-gradient rounded-2xl flex items-center justify-center shadow-lg animate-glow" aria-hidden="true">
+                                <!-- Bolt inline icon -->
+                                <svg class="w-6 h-6 text-navy-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
                             </div>
                         </div>
                         <h3 class="text-2xl font-bold text-navy-900 mb-4">Sofort gewinnen</h3>
@@ -191,8 +355,9 @@ onMounted(() => {
                             <div class="w-32 h-32 bg-navy-gradient rounded-3xl flex items-center justify-center mx-auto shadow-2xl group-hover:shadow-navy-500/25 transform group-hover:scale-110 transition-all duration-300">
                                 <span class="text-white text-4xl font-bold">3</span>
                             </div>
-                            <div class="absolute -top-4 -right-4 w-12 h-12 bg-gold-gradient rounded-2xl flex items-center justify-center shadow-lg animate-glow">
-                                <font-awesome-icon :icon="['fas', 'shipping-fast']" class="w-6 h-6 text-navy-900" />
+                            <div class="absolute -top-4 -right-4 w-12 h-12 bg-gold-gradient rounded-2xl flex items-center justify-center shadow-lg animate-glow" aria-hidden="true">
+                                <!-- Truck / shipping inline icon -->
+                                <svg class="w-6 h-6 text-navy-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h11v8H3z"/><path d="M14 11h4l3 3v1h-7z"/><circle cx="7.5" cy="18.5" r="2.5"/><circle cx="17.5" cy="18.5" r="2.5"/></svg>
                             </div>
                         </div>
                         <h3 class="text-2xl font-bold text-navy-900 mb-4">Erhalten & Versenden</h3>
@@ -214,25 +379,25 @@ onMounted(() => {
                                 Bei MystiDraw gibt es keine Enttäuschungen. Jedes Los ist ein Gewinn - von kleinen Überraschungen bis zu Premium-Artikeln der Kategorie A.
                             </p>
                             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                                <div class="bg-white/10 backdrop-blur-sm px-6 py-4 rounded-full border border-gold-400/30 hover:border-gold-400 transition-colors duration-300 group">
+                                <div class="bg-white/10 px-6 py-4 rounded-full border border-gold-400/30 hover:border-gold-400 transition-colors duration-300 group">
                                     <div class="flex items-center justify-center space-x-2">
                                         <font-awesome-icon :icon="['fas', 'star']" class="text-gold-400 group-hover:animate-bounce" />
                                         <span class="font-semibold">Nur 7€ Versand</span>
                                     </div>
                                 </div>
-                                <div class="bg-white/10 backdrop-blur-sm px-6 py-4 rounded-full border border-gold-400/30 hover:border-gold-400 transition-colors duration-300 group">
+                                <div class="bg-white/10 px-6 py-4 rounded-full border border-gold-400/30 hover:border-gold-400 transition-colors duration-300 group">
                                     <div class="flex items-center justify-center space-x-2">
                                         <font-awesome-icon :icon="['fas', 'box']" class="text-gold-400 group-hover:animate-bounce" />
                                         <span class="font-semibold">Aus Deutschland</span>
                                     </div>
                                 </div>
-                                <div class="bg-white/10 backdrop-blur-sm px-6 py-4 rounded-full border border-gold-400/30 hover:border-gold-400 transition-colors duration-300 group">
+                                <div class="bg-white/10 px-6 py-4 rounded-full border border-gold-400/30 hover:border-gold-400 transition-colors duration-300 group">
                                     <div class="flex items-center justify-center space-x-2">
                                         <font-awesome-icon :icon="['fas', 'shipping-fast']" class="text-gold-400 group-hover:animate-bounce" />
                                         <span class="font-semibold">1-3 Werktage</span>
                                     </div>
                                 </div>
-                                <div class="bg-white/10 backdrop-blur-sm px-6 py-4 rounded-full border border-gold-400/30 hover:border-gold-400 transition-colors duration-300 group">
+                                <div class="bg-white/10 px-6 py-4 rounded-full border border-gold-400/30 hover:border-gold-400 transition-colors duration-300 group">
                                     <div class="flex items-center justify-center space-x-2">
                                         <font-awesome-icon :icon="['fas', 'trophy']" class="text-gold-400 group-hover:animate-bounce" />
                                         <span class="font-semibold">100% Gewinnchance</span>
@@ -246,7 +411,7 @@ onMounted(() => {
         </section>
 
         <!-- Features Section -->
-        <section class="py-20 bg-white">
+    <section v-if="showBelowFold" class="py-20 bg-white" style="content-visibility:auto;contain-intrinsic-size:1600px;" v-once>
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="text-center mb-16">
                     <h2 class="text-5xl md:text-6xl font-bold text-navy-900 mb-6">Warum MystiDraw?</h2>
@@ -308,7 +473,7 @@ onMounted(() => {
         </section>
 
         <!-- Contact Section -->
-        <section id="contact" class="py-20 bg-gradient-to-br from-navy-50 via-white to-gold-50">
+    <section v-if="showBelowFold" id="contact" class="py-20 bg-gradient-to-br from-navy-50 via-white to-gold-50" style="content-visibility:auto;contain-intrinsic-size:1500px;" v-once>
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="max-w-3xl mx-auto text-center">
                     <h2 class="text-5xl md:text-6xl font-bold text-navy-900 mb-6">
@@ -344,7 +509,7 @@ onMounted(() => {
                         </div>
                     </div>
                     
-                    <div class="bg-white/80 backdrop-blur-sm rounded-3xl p-8 border border-navy-100 shadow-lg">
+                    <div class="bg-white/90 rounded-3xl p-8 border border-navy-100 shadow-lg">
                         <h3 class="text-2xl font-semibold text-navy-900 mb-6">Häufige Fragen</h3>
                         <div class="space-y-6 text-left">
                             <div class="p-4 rounded-2xl bg-navy-50 border border-navy-100">
@@ -378,4 +543,11 @@ onMounted(() => {
 
 <style scoped>
 html { scroll-behavior: smooth; }
+</style>
+
+<!-- Global (not scoped) animation & performance adjustments -->
+<style>
+@media (prefers-reduced-motion: reduce) {
+    .animate-glow, .animate-bounce, .animate-float, .animate-pulse { animation: none !important; }
+}
 </style>

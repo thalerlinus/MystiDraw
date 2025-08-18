@@ -130,6 +130,28 @@ class RaffleBrowseController extends Controller
 
         $bunnyPull = config('filesystems.disks.bunnycdn.pull_zone');
 
+        // JSON-LD ItemList (nur erste Seite sinnvoll als Übersicht)
+        $jsonLd = null;
+        if ($raffles->currentPage() === 1) {
+            $itemsForList = collect($rafflesTransformed->items())->take(10)->values();
+            $jsonLdStruct = [
+                '@context' => 'https://schema.org',
+                '@type' => 'ItemList',
+                'name' => 'MystiDraw Raffles Übersicht',
+                'itemListOrder' => 'https://schema.org/ItemListOrderAscending',
+                'numberOfItems' => $itemsForList->count(),
+                'itemListElement' => $itemsForList->map(function($r, $idx){
+                    return [
+                        '@type' => 'ListItem',
+                        'position' => $idx + 1,
+                        'url' => route('raffles.show', $r['slug']),
+                        'name' => $r['name'],
+                    ];
+                }),
+            ];
+            $jsonLd = json_encode($jsonLdStruct, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+        }
+
         return Inertia::render('Raffles/Index', [
             'categoriesTree' => $categoriesTree,
             'raffles' => [
@@ -142,6 +164,7 @@ class RaffleBrowseController extends Controller
             ],
             'selectedCategory' => $categorySlug,
             'bunny' => [ 'pull_zone' => $bunnyPull ],
+            'jsonLd' => $jsonLd,
         ]);
     }
 
@@ -222,9 +245,50 @@ class RaffleBrowseController extends Controller
 
         $bunnyPull = config('filesystems.disks.bunnycdn.pull_zone');
 
+        // Zusätzliche Felder für Schema (vereinfachte Ableitung)
+        $lowestPrice = $raffle->pricingTiers->count()
+            ? min($raffle->pricingTiers->pluck('unit_price')->prepend($raffle->base_ticket_price)->all())
+            : $raffle->base_ticket_price;
+        $highestPrice = $raffle->pricingTiers->count()
+            ? max($raffle->pricingTiers->pluck('unit_price')->prepend($raffle->base_ticket_price)->all())
+            : $raffle->base_ticket_price;
+
+        $schema = [
+            '@context' => 'https://schema.org',
+            '@type' => 'Product',
+            'name' => $raffle->name,
+            'image' => array_filter([
+                // Versuche Kategorie Hero Bild, ansonsten erstes Produktbild
+                $raffle->category?->hero_image_path ? $this->cdnUrl($raffle->category->hero_image_path) : null,
+            ]),
+            'description' => strip_tags($raffle->seo_description ?? ($raffle->short_description ?? $raffle->name)),
+            'brand' => [ '@type' => 'Brand', 'name' => 'MystiDraw' ],
+            'offers' => [
+                '@type' => 'AggregateOffer',
+                'priceCurrency' => $raffle->currency ?? 'EUR',
+                'lowPrice' => (string) $lowestPrice,
+                'highPrice' => (string) $highestPrice,
+                'offerCount' => $availableTickets,
+                'availability' => $availableTickets > 0 ? 'https://schema.org/InStock' : 'https://schema.org/SoldOut',
+                'url' => route('raffles.show', $raffle->slug),
+                'validFrom' => $raffle->starts_at?->toIso8601String(),
+                'validThrough' => $raffle->ends_at?->toIso8601String(),
+            ],
+        ];
+
+        $jsonLd = json_encode($schema, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+
         return Inertia::render('Raffles/Show', [
             'raffle' => $raffleData,
             'bunny' => [ 'pull_zone' => $bunnyPull ],
+            'jsonLd' => $jsonLd,
         ]);
+    }
+
+    private function cdnUrl(?string $path): ?string
+    {
+        if (!$path) return null;
+        $pull = config('filesystems.disks.bunnycdn.pull_zone');
+        return rtrim($pull,'/') . '/' . ltrim($path,'/');
     }
 }

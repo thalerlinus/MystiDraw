@@ -28,6 +28,29 @@ export function getImageUrl(path, pullZone) {
   return `/storage/${sanitizedPath}`;
 }
 
+// Generate responsive srcset variants (assumes BunnyCDN image processing via query params or path modifiers)
+// Provide common breakpoints; adjust processing syntax depending on CDN capabilities.
+export function buildSrcSet(path, pullZone, widths = [320,480,640,768,1024,1280]) {
+  if (!path) return null;
+  // Allow passing an image object { path: '...' }
+  if (typeof path === 'object') {
+    path = path.path || path.image_path || null;
+  }
+  if (typeof path !== 'string') return null;
+  const base = getImageUrl(path, pullZone);
+  // Only append ?width param if using BunnyCDN (or similar) domain.
+  const canResize = /bunnycdn|b-cdn\.|\bcdn\./i.test(base) || (pullZone && /bunnycdn|b-cdn\./i.test(pullZone));
+  if (canResize) {
+    return widths.map(w => `${base}?width=${w} ${w}w`).join(', ');
+  }
+  // Fallback: return plain base for each width (browser will just use one; harmless) or reduce to largest variant
+  return widths.map(w => `${base} ${w}w`).join(', ');
+}
+
+export function sizesAttr(defaultSizes = '(max-width: 768px) 100vw, 50vw') {
+  return defaultSizes;
+}
+
 export function getImagePair(basePath, pullZone) {
   const mainUrl = getImageUrl(basePath, pullZone);
   const thumbPath = deriveThumbPath(basePath);
@@ -44,4 +67,6 @@ export default {
   getImageUrl,
   getThumbUrl,
   getImagePair,
+  buildSrcSet,
+  sizesAttr,
 };
