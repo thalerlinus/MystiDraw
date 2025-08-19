@@ -301,11 +301,11 @@
                                 </p>
                                 <div class="flex flex-col gap-3 sm:gap-4">
                                     <a 
-                                        href="mailto:datenschutz@mystidraw.com"
+                                        href="mailto:contact@mystidraw.com"
                                         class="inline-flex items-center justify-center px-4 sm:px-6 py-3 bg-navy-900 hover:bg-navy-800 text-white font-semibold rounded-lg transition-colors text-sm sm:text-base"
                                     >
                                         <FontAwesomeIcon :icon="['fas', 'envelope']" class="mr-2" />
-                                        datenschutz@mystidraw.com
+                                        contact@mystidraw.com
                                     </a>
                                     <Link 
                                         :href="route('datenschutz')"
