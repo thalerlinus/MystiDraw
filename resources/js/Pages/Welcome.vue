@@ -7,8 +7,9 @@ import { Head, router, Link } from '@inertiajs/vue3';
 const RaffleCarousel = defineAsyncComponent(() => import('@/Components/RaffleCarousel.vue'));
 
 // Flags to mount below-the-fold content & deferred decorative hero animations
-const showBelowFold = ref(false);
-const showDecor = ref(false);
+// Ursprünglich false -> führte dazu, dass nur Hero sichtbar war wenn Aktivierung ausblieb.
+const showBelowFold = ref(true); // Sofort sichtbar
+const showDecor = ref(true);
 
 const route = window.route;
 
@@ -171,6 +172,17 @@ onMounted(() => {
         document.head.appendChild(s);
     };
     injectJsonLd('home-structured-data', [orgLd, webSiteLd, howToLd, faqLd]);
+
+    // Falls wir später wieder Lazy-Loading wollen, kann hier optionally eine Verzögerung eingebaut werden.
+    // Safety-Fallback (falls irgendwann wieder auf false gesetzt würde):
+    setTimeout(() => {
+        if (!showBelowFold.value) {
+            showBelowFold.value = true;
+        }
+        if (!showDecor.value) {
+            showDecor.value = true;
+        }
+    }, 1500);
 });
 </script>
 
