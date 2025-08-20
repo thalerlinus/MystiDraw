@@ -13,6 +13,8 @@ use App\Models\UserInventory;
 use App\Models\UserItem;
 use App\Models\Shipment;
 use App\Models\ShipmentItem;
+use App\Models\Raffle;
+use App\Models\RaffleItem;
 
 class CleanDatabaseCommand extends Command
 {
@@ -25,7 +27,9 @@ class CleanDatabaseCommand extends Command
                            {--force : Force deletion without confirmation}
                            {--tickets-only : Only clean tickets and outcomes}
                            {--orders-only : Only clean orders and payments}
-                           {--inventory-only : Only clean user inventory}';
+                           {--inventory-only : Only clean user inventory}
+                           {--core : Keep only users + raffles + raffle items (reset counters)}
+                           {--full : Legacy full wipe (everything incl. counters)}';
 
     /**
      * The console command description.
@@ -64,9 +68,14 @@ class CleanDatabaseCommand extends Command
                 $this->cleanOrdersAndPayments();
             } elseif ($this->option('inventory-only')) {
                 $this->cleanInventory();
-            } else {
-                // Clean everything in correct order
+            } elseif ($this->option('full')) {
+                $this->info('➡️  Running FULL cleanup (legacy behavior)');
                 $this->cleanAll();
+                $this->resetRaffleCounters();
+            } else {
+                // Default jetzt Core Clean
+                $this->info('➡️  Running default CORE cleanup (users + raffles + raffle items bleiben)');
+                $this->cleanToCore();
             }
 
             // Re-enable foreign key checks
@@ -97,6 +106,10 @@ class CleanDatabaseCommand extends Command
             ['User Items', UserItem::count()],
             ['Shipments', Shipment::count()],
             ['Shipment Items', ShipmentItem::count()],
+            ['Raffles', Raffle::count()],
+            ['Raffle Items', RaffleItem::count()],
+            ['Raffle Items (total qty)', RaffleItem::sum('quantity_total')],
+            ['Raffle Items (awarded qty)', RaffleItem::sum('quantity_awarded')],
         ]);
         $this->newLine();
     }
@@ -109,6 +122,19 @@ class CleanDatabaseCommand extends Command
         $this->cleanInventory();
         $this->cleanTicketsAndOutcomes();
         $this->cleanOrdersAndPayments();
+    }
+
+    private function cleanToCore()
+    {
+        $this->info('🧪 Core Clean: Entferne alle dynamischen Daten außer Users, Raffles, Raffle Items & Products');
+        // Reihenfolge wichtig wegen FKs
+        $this->cleanInventory();
+        $this->cleanTicketsAndOutcomes();
+        $this->cleanOrdersAndPayments();
+        $this->cleanRafflePurchases();
+        // Sonstige Tabellen die evtl. später dazu kommen könnten hier ergänzen
+        $this->resetRaffleCounters();
+        $this->line('✔ Core Zustand hergestellt.');
     }
 
     private function cleanTicketsAndOutcomes()
@@ -181,5 +207,33 @@ class CleanDatabaseCommand extends Command
             UserInventory::truncate();
             $this->line("   - Deleted {$userInventory} user inventory entries");
         }
+    }
+
+    private function cleanRafflePurchases()
+    {
+        if (DB::getSchemaBuilder()->hasTable('raffle_purchases')) {
+            $count = DB::table('raffle_purchases')->count();
+            if ($count > 0) {
+                DB::table('raffle_purchases')->truncate();
+                $this->line("   - Deleted {$count} raffle purchases");
+            }
+        }
+    }
+
+    private function resetRaffleCounters()
+    {
+        $this->info('♻️  Reset raffle counters & awarded quantities...');
+        // quantity_awarded zurücksetzen (Konfiguration erhalten)
+        DB::table('raffle_items')->update(['quantity_awarded' => 0]);
+        // Ticket-Zähler zurücksetzen
+        if (DB::getSchemaBuilder()->hasColumn('raffles','tickets_sold')) {
+            DB::table('raffles')->update(['tickets_sold' => 0]);
+        }
+        if (DB::getSchemaBuilder()->hasColumn('raffles','next_ticket_serial')) {
+            DB::table('raffles')->update(['next_ticket_serial' => 0]);
+        }
+        // Optional könnte man Status zurücksetzen – bewusst weggelassen.
+        $this->line('   - raffle_items.quantity_awarded → 0');
+        $this->line('   - raffles.tickets_sold / next_ticket_serial → 0');
     }
 }
