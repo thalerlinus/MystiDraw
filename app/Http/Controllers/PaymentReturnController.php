@@ -5,18 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\Payment;
 use App\Models\Ticket;
 use App\Models\Order;
-use App\Models\Raffle;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Stripe\StripeClient;
-use Illuminate\Database\QueryException;
 
 class PaymentReturnController extends Controller
 {
     /**
-     * Erfolgs-Return (oder Pending) – erstellt Tickets falls Webhook zu spät kommt.
+     * Success Callback – im No-Reservation Modell sind Order/Tickets bereits via Webhook erzeugt.
      */
     public function success(Request $request)
     {
@@ -24,134 +20,111 @@ class PaymentReturnController extends Controller
             return redirect()->route('checkout.failed', [
                 'payment_intent' => $request->query('payment_intent'),
                 'error' => $request->query('error') ?? 'Zahlung fehlgeschlagen oder abgebrochen',
-                'order_id' => $request->query('order_id'),
-                'raffle_id' => $request->query('raffle_id'),
-                'raffle_slug' => $request->query('raffle_slug'),
             ]);
         }
 
         $piId = $request->query('payment_intent');
-        $orderIdFromQuery = $request->query('order_id');
-        $raffleId = $request->query('raffle_id');
-        $raffleSlug = $request->query('raffle_slug');
-        $payment = null;
-        if ($piId) {
-            $payment = Payment::with('order.items')->where('provider','stripe')->where('provider_txn_id',$piId)->first();
-            if ($payment && $payment->status !== 'succeeded') {
+        $payment = $piId
+            ? Payment::with(['order.items'])
+                ->where('provider', 'stripe')
+                ->where('provider_txn_id', $piId)
+                ->first()
+            : null;
+
+        $raffleSlug = null; // wird später gesetzt
+
+        // Falls Payment noch nicht vorhanden (Webhook Verzögerung) – einmal Stripe Status prüfen.
+        if (!$payment && $piId) {
+            try {
                 $stripe = new StripeClient(config('services.stripe.secret'));
-                try {
-                    $pi = $stripe->paymentIntents->retrieve($piId);
-                    if ($pi->status === 'succeeded' && $payment->status !== 'succeeded') {
-                        $payment->update(['status' => 'succeeded', 'paid_at' => now()]);
-                    }
-                } catch (\Exception $e) {
-                    // ignorieren – wir zeigen weiter pending
+                $pi = $stripe->paymentIntents->retrieve($piId);
+                if (($pi->metadata['raffle_id'] ?? null)) {
+                    $raffleSlug = \App\Models\Raffle::where('id', $pi->metadata['raffle_id'])->value('slug');
                 }
-                $payment?->refresh();
+                if ($pi->status !== 'succeeded') {
+                    return Inertia::render('Checkout/Success', [
+                        'order' => null,
+                        'payment_intent' => $piId,
+                        'pending' => true,
+                        'tickets' => [],
+                        'oversell_refund' => false,
+                        'payment_status' => $pi->status,
+                        'raffle_slug' => $raffleSlug,
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                return Inertia::render('Checkout/Success', [
+                    'order' => null,
+                    'payment_intent' => $piId,
+                    'pending' => true,
+                    'tickets' => [],
+                    'oversell_refund' => false,
+                    'payment_status' => null,
+                    'raffle_slug' => $raffleSlug,
+                ]);
             }
         }
 
-        if ($payment && $payment->status === 'succeeded') {
-            $this->ensureTicketsExistWithRetry($payment, 'Return success');
-            $order = $payment->order()->with('items')->first();
-            $tickets = Ticket::where('order_id', $order->id)
-                ->orderBy('serial')
-                ->get(['id','serial','raffle_id','status']);
+        if (!$payment) {
             return Inertia::render('Checkout/Success', [
-                'order' => [
-                    'id' => $order->id,
-                    'status' => $order->status,
-                    'total' => $order->total,
-                    'currency' => $order->currency,
-                    'paid_at' => $order->paid_at,
-                    'items' => $order->items->map(fn($i) => [
-                        'raffle_id' => $i->raffle_id,
-                        'quantity' => $i->quantity,
-                        'unit_price' => $i->unit_price,
-                        'subtotal' => $i->subtotal,
-                    ]),
-                ],
+                'order' => null,
                 'payment_intent' => $piId,
-                'redirect_status' => 'succeeded',
-                'raffle_id' => $raffleId ?? $payment->order->items->first()?->raffle_id,
+                'pending' => true,
+                'tickets' => [],
+                'oversell_refund' => false,
+                'payment_status' => null,
                 'raffle_slug' => $raffleSlug,
-                'tickets' => $tickets,
             ]);
         }
+
+        // Spezialfall Oversell/Refund: Payment vorhanden aber keine Order erzeugt (order_id null)
+        if (!$payment->order_id) {
+            $isRefund = in_array($payment->status, ['refunded', 'failed', 'cancelled']);
+            // Versuch Slug über Stripe Metadata falls noch nicht gesetzt
+            if (!$raffleSlug) {
+                try {
+                    $stripe = new StripeClient(config('services.stripe.secret'));
+                    $pi = $stripe->paymentIntents->retrieve($piId);
+                    if (($pi->metadata['raffle_id'] ?? null)) {
+                        $raffleSlug = \App\Models\Raffle::where('id', $pi->metadata['raffle_id'])->value('slug');
+                    }
+                } catch (\Throwable $e) {}
+            }
+            return Inertia::render('Checkout/Success', [
+                'order' => null,
+                'payment_intent' => $piId,
+                'pending' => !$isRefund, // wenn refund/failed -> nicht mehr pending
+                'tickets' => [],
+                'oversell_refund' => $isRefund,
+                'payment_status' => $payment->status,
+                'raffle_slug' => $raffleSlug,
+            ]);
+        }
+
+        // Tickets sind bereits durch Webhook erzeugt; direkt laden.
+        $order = $payment->order()->with('items')->first();
+        if ($order) {
+            $firstItem = $order->items->first();
+            if ($firstItem) {
+                $raffleSlug = \App\Models\Raffle::where('id', $firstItem->raffle_id)->value('slug');
+            }
+        } else {
+            return Inertia::render('Checkout/Success', [
+                'order' => null,
+                'payment_intent' => $piId,
+                'pending' => true,
+                'tickets' => [],
+                'oversell_refund' => false,
+                'payment_status' => $payment->status,
+                'raffle_slug' => $raffleSlug,
+            ]);
+        }
+        $tickets = Ticket::where('order_id', $order->id)
+            ->orderBy('serial')
+            ->get(['id','serial','raffle_id','status']);
 
         return Inertia::render('Checkout/Success', [
-            'order' => null,
-            'payment_intent' => $piId,
-            'pending' => true,
-            'redirect_status' => $request->query('redirect_status'),
-            'order_id' => $orderIdFromQuery,
-            'raffle_id' => $raffleId,
-            'raffle_slug' => $raffleSlug,
-            'tickets' => [],
-        ]);
-    }
-
-    /** Fehlerseite */
-    public function failed(Request $request)
-    {
-        $piId = $request->query('payment_intent');
-        $error = $request->query('error');
-        $raffleId = $request->query('raffle_id');
-        $raffleSlug = $request->query('raffle_slug');
-        $payment = null;
-        if ($piId) {
-            $payment = Payment::where('provider','stripe')->where('provider_txn_id',$piId)->first();
-            if ($payment && in_array($payment->status, ['pending'])) {
-                try {
-                    $stripe = new \Stripe\StripeClient(config('services.stripe.secret'));
-                    $pi = $stripe->paymentIntents->retrieve($piId);
-                    // Map Stripe Status -> Lokal falls Webhook verpasst wurde
-                    $failedStates = ['canceled','cancelled','requires_payment_method'];
-                    if (in_array($pi->status, $failedStates)) {
-                        $newStatus = in_array($pi->status,['canceled','cancelled']) ? 'cancelled' : 'failed';
-                        $payment->update(['status'=>$newStatus,'raw_response'=>$pi]);
-                        $order = $payment->order;
-                        if ($order && $order->status === Order::STATUS_PENDING) {
-                            $order->update(['status'=>Order::STATUS_CANCELLED]);
-                        }
-                        \Log::info('Return failed mapping Stripe Status', ['payment_id'=>$payment->id,'stripe_status'=>$pi->status,'mapped'=>$newStatus]);
-                    }
-                } catch (\Exception $e) {
-                    \Log::warning('Stripe PI Fetch im failed() fehlgeschlagen', ['pi'=>$piId,'error'=>$e->getMessage()]);
-                }
-            }
-        }
-        return Inertia::render('Checkout/Failed', [
-            'payment_intent' => $piId,
-            'error' => $error,
-            'status' => $payment?->status,
-            'raffle_id' => $raffleId,
-            'raffle_slug' => $raffleSlug,
-        ]);
-    }
-
-    /** Polling-Status-Endpunkt */
-    public function status(Request $request)
-    {
-        $piId = $request->query('payment_intent');
-        if (!$piId) {
-            return response()->json(['error' => 'payment_intent missing'], 422);
-        }
-        $payment = Payment::with('order.items')->where('provider','stripe')->where('provider_txn_id',$piId)->first();
-        if (!$payment) {
-            return response()->json(['status' => 'unknown']);
-        }
-        $order = $payment->order;
-        $tickets = [];
-        if ($payment->status === 'succeeded') {
-            $this->ensureTicketsExistWithRetry($payment, 'Return status');
-            $tickets = Ticket::where('order_id', $order->id)
-                ->orderBy('serial')
-                ->get(['id','serial','raffle_id','status']);
-        }
-        return response()->json([
-            'status' => $payment->status,
-            'order' => $payment->status === 'succeeded' ? [
+            'order' => [
                 'id' => $order->id,
                 'status' => $order->status,
                 'total' => $order->total,
@@ -163,77 +136,42 @@ class PaymentReturnController extends Controller
                     'unit_price' => $i->unit_price,
                     'subtotal' => $i->subtotal,
                 ]),
-            ] : null,
+            ],
+            'payment_intent' => $piId,
+            'pending' => false,
             'tickets' => $tickets,
+            'oversell_refund' => false,
+            'payment_status' => $payment->status,
+            'raffle_slug' => $raffleSlug,
         ]);
     }
 
-    /**
-     * Erzeugt Tickets falls noch nicht vorhanden (z.B. Webhook-Latenz) mit Retry bei Unique-Verletzung.
-     */
-    protected function ensureTicketsExistWithRetry(Payment $payment, string $context): void
+    /** Fehlerseite */
+    public function failed(Request $request)
     {
-        $attempts = 0; $max = 5; $lastException = null;
-        while ($attempts < $max) {
+        $piId = $request->query('payment_intent');
+        $error = $request->query('error');
+        $payment = $piId
+            ? Payment::where('provider','stripe')->where('provider_txn_id',$piId)->first()
+            : null;
+
+        if ($payment && $payment->status === 'pending') {
             try {
-                DB::transaction(function () use ($payment, $context, &$lastException) {
-                    $order = $payment->order()->lockForUpdate()->first();
-                    if ($order->status !== Order::STATUS_PAID) {
-                        $order->update([
-                            'status' => Order::STATUS_PAID,
-                            'paid_at' => now(),
-                        ]);
-                    }
-                    $existingCount = DB::table('tickets')->where('order_id', $order->id)->count();
-                    if ($existingCount > 0) {
-                        return; // nothing to do
-                    }
-                    $item = $order->items()->first();
-                    if (!$item) {
-                        return; // defensive
-                    }
-                    $raffle = Raffle::where('id', $item->raffle_id)->lockForUpdate()->first();
-                    $totalFromItems = $raffle->items()->sum('quantity_total');
-                    $issued = DB::table('tickets')->where('raffle_id', $raffle->id)->count();
-                    if ($issued + $item->quantity > $totalFromItems) {
-                        Log::warning('Kapazitätskonflikt (' . $context . ') – Tickets nicht erzeugt', ['order_id' => $order->id, 'raffle_id' => $raffle->id]);
-                        return;
-                    }
-                    $base = (int) (DB::table('tickets')->max('serial') ?? 0); // global Basis
-                    $ticketsInsert = [];
-                    for ($i = 1; $i <= $item->quantity; $i++) {
-                        $ticketsInsert[] = [
-                            'raffle_id' => $item->raffle_id,
-                            'user_id' => $order->user_id,
-                            'order_id' => $order->id,
-                            'serial' => $base + $i,
-                            'price_paid' => $item->unit_price,
-                            'status' => 'paid',
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ];
-                    }
-                    DB::table('tickets')->insert($ticketsInsert);
-                    $raffle->increment('tickets_sold', $item->quantity);
-                });
-                return; // success
-            } catch (QueryException $qe) {
-                if ($qe->getCode() === '23000') { // duplicate key
-                    $attempts++;
-                    usleep(20000);
-                    continue;
+                $stripe = new StripeClient(config('services.stripe.secret'));
+                $pi = $stripe->paymentIntents->retrieve($piId);
+                $failedStates = ['canceled','cancelled','requires_payment_method'];
+                if (in_array($pi->status, $failedStates)) {
+                    $payment->update(['status' => in_array($pi->status,['canceled','cancelled']) ? 'cancelled' : 'failed', 'raw_response' => $pi]);
                 }
-                $lastException = $qe; break;
-            } catch (\Throwable $t) {
-                $lastException = $t; break;
+            } catch (\Throwable $e) {
+                // ignorieren
             }
         }
-        if ($lastException) {
-            Log::error('Ticket-Erzeugung fehlgeschlagen nach Retries', [
-                'payment_id' => $payment->id,
-                'context' => $context,
-                'error' => $lastException->getMessage(),
-            ]);
-        }
+
+        return Inertia::render('Checkout/Failed', [
+            'payment_intent' => $piId,
+            'error' => $error,
+            'status' => $payment?->status,
+        ]);
     }
 }

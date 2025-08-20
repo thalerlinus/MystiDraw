@@ -21,16 +21,12 @@ Route::get('/raffles', [RaffleBrowseController::class, 'index'])->name('raffles.
 Route::get('/raffles/{raffle:slug}', [RaffleBrowseController::class, 'show'])->name('raffles.show');
 Route::get('/checkout/success', [\App\Http\Controllers\PaymentReturnController::class, 'success'])->name('checkout.success');
 Route::get('/checkout/failed', [\App\Http\Controllers\PaymentReturnController::class, 'failed'])->name('checkout.failed');
-Route::get('/checkout/status', [\App\Http\Controllers\PaymentReturnController::class, 'status'])->name('checkout.status');
 
 // Cookie Consent API
 Route::get('/api/cookie-consent', [\App\Http\Controllers\CookieConsentController::class, 'getConsent']);
 Route::post('/api/cookie-consent', [\App\Http\Controllers\CookieConsentController::class, 'saveConsent']);
 Route::get('/api/cookie-consent/{category}', [\App\Http\Controllers\CookieConsentController::class, 'hasConsent']);
 Route::delete('/api/cookie-consent', [\App\Http\Controllers\CookieConsentController::class, 'resetConsent']);
-
-// Reservation Status API (public - no auth required)
-Route::get('/api/raffles/{raffle}/reservation-status', [\App\Http\Controllers\Api\ReservationStatusController::class, 'getRaffleReservationStatus']);
 
 // Legal pages
 Route::get('/impressum', function () {
@@ -62,9 +58,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/tickets/open-all', [TicketOpeningController::class, 'openAllTickets'])->name('tickets.openAll');
     Route::get('/inventory', [\App\Http\Controllers\InventoryController::class, 'index'])->name('inventory.index');
 
-    // Order cancellation
-    Route::post('/orders/{order}/cancel', [\App\Http\Controllers\OrderCancellationController::class, 'cancel'])->name('orders.cancel');
-
     // Shipping routes
     Route::get('/shipping/create', function () {
         return redirect()->route('inventory.index')->with('message', 'Bitte wähle zuerst Items aus deinem Inventar aus.');
@@ -79,6 +72,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::post('/raffles/{raffle}/purchase/intent', [RafflePurchaseController::class, 'createIntent'])->name('raffles.purchase.intent');
+    Route::get('/raffles/{raffle}/availability', [\App\Http\Controllers\RaffleAvailabilityController::class, 'show'])->name('raffles.availability');
 });
 
 // Stripe webhook (no auth, CSRF exempt because Stripe signs it)

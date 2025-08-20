@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\User;
 use App\Models\Raffle;
@@ -12,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 use Stripe\StripeClient;
+use Illuminate\Support\Facades\Log;
 
 class StripeWebhookController extends Controller
 {
@@ -25,11 +27,11 @@ class StripeWebhookController extends Controller
         try {
             $event = \Stripe\Webhook::constructEvent($payload, $sigHeader, $secret);
         } catch (\Exception $e) {
-            \Log::warning('Stripe Webhook Signatur ungültig', ['error' => $e->getMessage()]);
+            Log::warning('Stripe Webhook Signatur ungültig', ['error' => $e->getMessage()]);
             return response()->json(['message' => 'Invalid'], 400);
         }
 
-        \Log::info('Stripe Webhook empfangen', ['type' => $event->type]);
+        Log::info('Stripe Webhook empfangen', ['type' => $event->type]);
 
         if ($event->type === 'payment_intent.succeeded') {
             return $this->handlePaymentIntentSucceeded($event);
@@ -45,20 +47,155 @@ class StripeWebhookController extends Controller
         $pi = $event->data->object;
         $payment = Payment::where('provider', 'stripe')->where('provider_txn_id', $pi->id)->first();
 
+        // NEU: No-Reservation Modell – falls Payment noch nicht existiert, anhand Metadata alles erzeugen
+        if (!$payment && ($pi->metadata['model_version'] ?? null) === 'no-reservation-v1') {
+            Log::info('Webhook no-reservation: Erzeuge Order/Payment/Tickets direkt', ['pi' => $pi->id]);
+            $userId = (int) ($pi->metadata['user_id'] ?? 0);
+            $raffleId = (int) ($pi->metadata['raffle_id'] ?? 0);
+            $quantity = (int) ($pi->metadata['quantity'] ?? 0);
+            $unitPrice = (float) ($pi->metadata['unit_price'] ?? 0);
+            if ($userId && $raffleId && $quantity > 0 && $unitPrice > 0) {
+                $oversell = false; // Flag für Refund
+                try {
+                    DB::transaction(function () use (&$payment, $pi, $userId, $raffleId, $quantity, $unitPrice, &$oversell) {
+                        $raffle = Raffle::where('id', $raffleId)->lockForUpdate()->first();
+                        if (!$raffle || $raffle->status !== 'live') {
+                            Log::warning('Webhook no-reservation: Ungültiges Raffle oder nicht live', ['raffle_id' => $raffleId]);
+                            return; // keine Erstellung
+                        }
+                        // Kapazität bestimmen
+                        $totalConfigured = (int) ($raffle->tickets_total ?: $raffle->items()->sum('quantity_total'));
+                        if ($raffle->tickets_total == 0) {
+                            $raffle->update(['tickets_total' => $totalConfigured]);
+                        }
+                        $issued = DB::table('tickets')->where('raffle_id', $raffleId)->count();
+                        if ($issued + $quantity > $totalConfigured) {
+                            Log::error('Webhook no-reservation: Kapazitätsüberschreitung – erstelle kein Order', ['raffle_id' => $raffleId, 'issued' => $issued, 'quantity' => $quantity, 'total' => $totalConfigured]);
+                            $payment = Payment::updateOrCreate([
+                                'provider' => 'stripe',
+                                'provider_txn_id' => $pi->id,
+                            ], [
+                                'order_id' => null,
+                                'amount' => $pi->amount_received ? $pi->amount_received / 100 : ($quantity * $unitPrice),
+                                'currency' => strtoupper($pi->currency),
+                                'status' => 'failed',
+                                'raw_response' => [
+                                    'oversell' => true,
+                                    'pi_id' => $pi->id,
+                                    'quantity' => $quantity,
+                                ],
+                            ]);
+                            $oversell = true;
+                            return;
+                        }
+
+                        // Order anlegen (direkt paid)
+                        $order = Order::create([
+                            'user_id' => $userId,
+                            'status' => Order::STATUS_PAID,
+                            'type' => 'raffle',
+                            'total' => $quantity * $unitPrice,
+                            'currency' => strtoupper($pi->currency),
+                            'paid_at' => now(),
+                            'meta' => ['source' => 'webhook', 'model' => 'no-reservation-v1']
+                        ]);
+                        // OrderItem
+                        OrderItem::create([
+                            'order_id' => $order->id,
+                            'raffle_id' => $raffleId,
+                            'quantity' => $quantity,
+                            'unit_price' => $unitPrice,
+                            'subtotal' => $quantity * $unitPrice,
+                            'type' => 'raffle_tickets',
+                            'meta' => null,
+                        ]);
+                        // Payment
+                        $payment = Payment::create([
+                            'order_id' => $order->id,
+                            'provider' => 'stripe',
+                            'provider_txn_id' => $pi->id,
+                            'amount' => $quantity * $unitPrice,
+                            'currency' => strtoupper($pi->currency),
+                            'status' => 'succeeded',
+                            'paid_at' => now(),
+                            'raw_response' => $pi->toArray(),
+                        ]);
+                        $this->ensureInvoiceNumber($payment);
+                        // Tickets erzeugen
+                        $base = (int) (DB::table('tickets')->max('serial') ?? 0);
+                        $tickets = [];
+                        for ($i = 1; $i <= $quantity; $i++) {
+                            $tickets[] = [
+                                'raffle_id' => $raffleId,
+                                'user_id' => $userId,
+                                'order_id' => $order->id,
+                                'serial' => $base + $i,
+                                'price_paid' => $unitPrice,
+                                'status' => 'paid',
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ];
+                        }
+                        DB::table('tickets')->insert($tickets);
+                        $raffle->increment('tickets_sold', $quantity);
+                        Log::info('Webhook no-reservation: Tickets erzeugt', ['order_id' => $order->id, 'count' => $quantity]);
+                    });
+                } catch (QueryException $qe) {
+                    if ($qe->getCode() === '23000') {
+                        Log::warning('Webhook no-reservation: Duplicate serial – späterer Retry möglich', ['pi' => $pi->id]);
+                    } else {
+                        Log::error('Webhook no-reservation: QueryException', ['error' => $qe->getMessage()]);
+                    }
+                } catch (\Throwable $t) {
+                    Log::error('Webhook no-reservation: Unerwarteter Fehler', ['error' => $t->getMessage()]);
+                }
+                // Automatischer Refund bei Oversell
+                if ($oversell) {
+                    try {
+                        $stripe = new StripeClient(config('services.stripe.secret'));
+                        if ($pi->latest_charge) {
+                            $refund = $stripe->refunds->create([
+                                'charge' => $pi->latest_charge,
+                                'reason' => 'requested_by_customer',
+                            ]);
+                            Payment::where('provider','stripe')->where('provider_txn_id',$pi->id)
+                                ->update([
+                                    'status' => 'refunded',
+                                    'raw_response->refund' => $refund->toArray(),
+                                ]);
+                            Log::info('Webhook no-reservation: Refund ausgelöst wegen Oversell', ['pi' => $pi->id]);
+                        } else {
+                            Log::warning('Webhook no-reservation: Kein latest_charge für Refund vorhanden', ['pi' => $pi->id]);
+                        }
+                    } catch (\Throwable $re) {
+                        Log::error('Webhook no-reservation: Refund fehlgeschlagen', ['pi' => $pi->id, 'error' => $re->getMessage()]);
+                    }
+                }
+                // Payment erneut laden falls erstellt
+                $payment = Payment::where('provider','stripe')->where('provider_txn_id',$pi->id)->first();
+            } else {
+                Log::warning('Webhook no-reservation: Unvollständige Metadata', ['pi' => $pi->id, 'metadata' => $pi->metadata]);
+            }
+        }
+
         if (!$payment) {
-            \Log::warning('Webhook Payment nicht gefunden', ['pi' => $pi->id]);
+            Log::warning('Webhook Payment nicht gefunden', ['pi' => $pi->id]);
+            return response()->json(['received' => true]);
+        }
+
+        // Oversell Payment ohne Order: weitere Succeeded Events einfach quittieren
+        if (!$payment->order_id) {
+            Log::info('Webhook Oversell Payment ohne Order – keine weitere Verarbeitung', ['pi' => $pi->id, 'payment_status' => $payment->status]);
             return response()->json(['received' => true]);
         }
 
         $order = $payment->order()->with('items')->first();
-
-        // Check if this is a shipping order (identified by meta field)
         $isShippingOrder = isset($order->meta['shipping_cost']);
 
         if ($isShippingOrder) {
-            return $this->handleShippingPaymentSuccess($payment, $order, $pi);
+            return $this->handleShippingPaymentSuccess($payment, $order, $pi->toArray());
         } else {
-            return $this->handleRafflePaymentSuccess($payment, $order, $pi);
+            return $this->handleRafflePaymentSuccess($payment, $order, $pi->toArray());
         }
     }
 
@@ -66,7 +203,7 @@ class StripeWebhookController extends Controller
     {
         // Email senden wenn noch nicht gesendet UND Payment erfolgreich
         if (!$payment->email_sent_at && $payment->status === 'succeeded') {
-            \Log::info('Webhook: Email wird gesendet für bereits erfolgreiche Shipping-Zahlung', ['payment_id' => $payment->id]);
+            Log::info('Webhook: Email wird gesendet für bereits erfolgreiche Shipping-Zahlung', ['payment_id' => $payment->id]);
             $this->sendPaymentSuccessEmail($payment, $order);
         }
 
@@ -74,7 +211,7 @@ class StripeWebhookController extends Controller
         if ($payment->status !== 'succeeded') {
             try {
                 DB::transaction(function () use ($payment, $pi, $order) {
-                    \Log::info('Webhook Verarbeitung shipping payment_intent.succeeded Start', ['payment_id' => $payment->id, 'order_id' => $payment->order_id]);
+                    Log::info('Webhook Verarbeitung shipping payment_intent.succeeded Start', ['payment_id' => $payment->id, 'order_id' => $payment->order_id]);
 
                     // Update payment status
                     $payment->update([
@@ -96,7 +233,7 @@ class StripeWebhookController extends Controller
                         $this->processShippingOrder($order);
                     }
 
-                    \Log::info('Webhook Verarbeitung shipping payment_intent.succeeded Ende', ['payment_id' => $payment->id, 'order_id' => $payment->order_id]);
+                    Log::info('Webhook Verarbeitung shipping payment_intent.succeeded Ende', ['payment_id' => $payment->id, 'order_id' => $payment->order_id]);
                 });
 
                 // Email senden nach erfolgreicher Verarbeitung
@@ -105,13 +242,13 @@ class StripeWebhookController extends Controller
                 }
 
             } catch (\Exception $e) {
-                \Log::error('Webhook Shipping Payment Verarbeitung fehlgeschlagen', [
+                Log::error('Webhook Shipping Payment Verarbeitung fehlgeschlagen', [
                     'payment_id' => $payment->id,
                     'error' => $e->getMessage()
                 ]);
             }
         } else {
-            \Log::info('Webhook Shipping Payment bereits succeeded', ['payment_id' => $payment->id, 'payment_status' => $payment->status]);
+            Log::info('Webhook Shipping Payment bereits succeeded', ['payment_id' => $payment->id, 'payment_status' => $payment->status]);
         }
 
         return response()->json(['received' => true]);
@@ -119,10 +256,14 @@ class StripeWebhookController extends Controller
 
     private function handleRafflePaymentSuccess($payment, $order, $pi)
     {
+        if (!$order) {
+            Log::info('Webhook Raffle Payment ohne Order (skip)', ['payment_id' => $payment->id, 'status' => $payment->status]);
+            return response()->json(['received' => true]);
+        }
         // Original raffle payment logic from RafflePurchaseController
         // Email senden wenn noch nicht gesendet UND Payment erfolgreich
         if (!$payment->email_sent_at && $payment->status === 'succeeded') {
-            \Log::info('Webhook: Email wird gesendet für bereits erfolgreiche Zahlung', ['payment_id' => $payment->id]);
+            Log::info('Webhook: Email wird gesendet für bereits erfolgreiche Zahlung', ['payment_id' => $payment->id]);
             $this->sendPaymentSuccessEmail($payment, $order);
         }
 
@@ -134,7 +275,7 @@ class StripeWebhookController extends Controller
             while (!$done && $retries < $maxRetries) {
                 try {
                     DB::transaction(function () use ($payment, $pi, &$done, $order) {
-                        \Log::info('Webhook Verarbeitung payment_intent.succeeded Start', ['payment_id' => $payment->id, 'order_id' => $payment->order_id]);
+                        Log::info('Webhook Verarbeitung payment_intent.succeeded Start', ['payment_id' => $payment->id, 'order_id' => $payment->order_id]);
                         $payment->update([
                             'status' => 'succeeded',
                             'paid_at' => now(),
@@ -152,7 +293,7 @@ class StripeWebhookController extends Controller
                             $totalFromItems = $raffleLocked->items()->sum('quantity_total');
                             if ((int) $raffleLocked->tickets_total !== (int) $totalFromItems && (int) $raffleLocked->tickets_total !== 0) {
                                 // Inkonsistenz -> abbrechen aber nicht retriable
-                                \Log::warning('Kapazitätsfehler Raffle-Konfiguration', ['raffle_id' => $raffleLocked->id]);
+                                Log::warning('Kapazitätsfehler Raffle-Konfiguration', ['raffle_id' => $raffleLocked->id]);
                                 return;
                             }
                             if ((int) $raffleLocked->tickets_total === 0) {
@@ -162,7 +303,7 @@ class StripeWebhookController extends Controller
                             if ($issuedTicketsRaffle + $item->quantity > $totalFromItems) {
                                 $order->update(['status' => Order::STATUS_CANCELLED]);
                                 $payment->update(['status' => 'failed']);
-                                \Log::error('Webhook Kapazitätsüberschreitung: Bestellung storniert', ['order_id' => $order->id, 'raffle_id' => $raffleLocked->id]);
+                                Log::error('Webhook Kapazitätsüberschreitung: Bestellung storniert', ['order_id' => $order->id, 'raffle_id' => $raffleLocked->id]);
                                 return;
                             }
                             // Globale Serial-Vergabe mit Retry über Unique Constraint
@@ -182,25 +323,25 @@ class StripeWebhookController extends Controller
                             }
                             DB::table('tickets')->insert($tickets);
                             $raffleLocked->increment('tickets_sold', $item->quantity);
-                            \Log::info('Webhook Tickets erzeugt', ['order_id' => $order->id, 'count' => $item->quantity]);
+                            Log::info('Webhook Tickets erzeugt', ['order_id' => $order->id, 'count' => $item->quantity]);
                         }
                         $done = true;
 
-                        \Log::info('Webhook Verarbeitung payment_intent.succeeded Ende', ['payment_id' => $payment->id, 'order_id' => $payment->order_id]);
+                        Log::info('Webhook Verarbeitung payment_intent.succeeded Ende', ['payment_id' => $payment->id, 'order_id' => $payment->order_id]);
                     });
                 } catch (QueryException $qe) {
                     if ($qe->getCode() === '23000') { // Duplicate serial race
                         $retries++;
-                        \Log::warning('Webhook Duplicate serial retry', ['payment_id' => $payment->id, 'attempt' => $retries]);
+                        Log::warning('Webhook Duplicate serial retry', ['payment_id' => $payment->id, 'attempt' => $retries]);
                         usleep(50000); // 50ms backoff
                     } else {
-                        \Log::error('Webhook QueryException', ['error' => $qe->getMessage()]);
+                        Log::error('Webhook QueryException', ['error' => $qe->getMessage()]);
                         throw $qe;
                     }
                 }
             }
             if (!$done) {
-                \Log::error('Webhook Verarbeitung nicht erfolgreich nach Retries', ['payment_id' => $payment->id]);
+                Log::error('Webhook Verarbeitung nicht erfolgreich nach Retries', ['payment_id' => $payment->id]);
             } else {
                 // Email senden nach erfolgreicher Verarbeitung
                 if (!$payment->fresh()->email_sent_at) {
@@ -208,7 +349,7 @@ class StripeWebhookController extends Controller
                 }
             }
         } else {
-            \Log::info('Webhook Payment bereits succeeded oder nicht gefunden', ['payment_id' => $payment?->id, 'payment_status' => $payment?->status]);
+            Log::info('Webhook Payment bereits succeeded oder nicht gefunden', ['payment_id' => $payment?->id, 'payment_status' => $payment?->status]);
         }
 
         return response()->json(['received' => true]);
@@ -222,7 +363,7 @@ class StripeWebhookController extends Controller
         $type = $event->type;
 
         if (!$payment) {
-            \Log::info('Webhook Payment nicht gefunden', ['pi' => $pi->id, 'event_type' => $type]);
+            Log::info('Webhook Payment nicht gefunden', ['pi' => $pi->id, 'event_type' => $type]);
             return response()->json(['received' => true]);
         }
 
@@ -234,7 +375,7 @@ class StripeWebhookController extends Controller
                     if ($order && $order->status === Order::STATUS_PENDING) {
                         $order->update(['status' => Order::STATUS_CANCELLED]);
                     }
-                    \Log::info('Webhook Payment canceled', ['payment_id' => $payment->id, 'order_id' => $payment->order_id]);
+                    Log::info('Webhook Payment canceled', ['payment_id' => $payment->id, 'order_id' => $payment->order_id]);
                 });
             }
         } elseif ($type === 'payment_intent.payment_failed') {
@@ -245,7 +386,7 @@ class StripeWebhookController extends Controller
                     if ($order && $order->status === Order::STATUS_PENDING) {
                         $order->update(['status' => Order::STATUS_CANCELLED]);
                     }
-                    \Log::info('Webhook Payment failed', ['payment_id' => $payment->id, 'order_id' => $payment->order_id]);
+                    Log::info('Webhook Payment failed', ['payment_id' => $payment->id, 'order_id' => $payment->order_id]);
                 });
             }
         } elseif (
@@ -258,9 +399,9 @@ class StripeWebhookController extends Controller
         ) {
             // Übergangs-/Infozustände – rohen Intent speichern
             $payment->update(['raw_response' => $pi]);
-            \Log::info('Webhook Payment Zwischenstatus', ['payment_id' => $payment->id, 'event_type' => $type, 'status_local' => $payment->status]);
+            Log::info('Webhook Payment Zwischenstatus', ['payment_id' => $payment->id, 'event_type' => $type, 'status_local' => $payment->status]);
         } else {
-            \Log::debug('Webhook Payment uninteressanter Typ', ['event_type' => $type]);
+            Log::debug('Webhook Payment uninteressanter Typ', ['event_type' => $type]);
         }
 
         return response()->json(['received' => true]);
@@ -271,14 +412,14 @@ class StripeWebhookController extends Controller
         // Idempotenz prüfen
         $meta = $order->meta ?? [];
         if (!empty($meta['processed'])) {
-            \Log::info('Shipping Order bereits verarbeitet (idempotent)', ['order_id' => $order->id]);
+            Log::info('Shipping Order bereits verarbeitet (idempotent)', ['order_id' => $order->id]);
             return;
         }
 
         $ticketIds = $meta['ticket_ids'] ?? [];
         $addressData = $meta['shipping_address_data'] ?? null;
         if (!$addressData) {
-            \Log::warning('Keine shipping_address_data im Order Meta gefunden', ['order_id' => $order->id]);
+            Log::warning('Keine shipping_address_data im Order Meta gefunden', ['order_id' => $order->id]);
             return; // Ohne Adresse kein Shipment anlegen
         }
         
@@ -289,7 +430,7 @@ class StripeWebhookController extends Controller
             ->get();
 
         if ($selectedOutcomes->isEmpty()) {
-            \Log::warning('Keine gültigen Items zum Versenden gefunden', ['order_id' => $order->id]);
+            Log::warning('Keine gültigen Items zum Versenden gefunden', ['order_id' => $order->id]);
             return;
         }
 
@@ -315,7 +456,7 @@ class StripeWebhookController extends Controller
                 try {
                     $outcome->update(['status' => 'reserved_for_shipping']);
                 } catch (\Illuminate\Database\QueryException $e) {
-                    \Log::warning('Konnte outcome Status nicht auf reserved_for_shipping setzen (Enum evtl. noch nicht migriert)', [
+                    Log::warning('Konnte outcome Status nicht auf reserved_for_shipping setzen (Enum evtl. noch nicht migriert)', [
                         'outcome_id' => $outcome->id,
                         'error' => $e->getMessage(),
                     ]);
@@ -351,7 +492,7 @@ class StripeWebhookController extends Controller
         $meta['processed'] = true;
         $order->update(['meta' => $meta]);
 
-        \Log::info('Shipping order processed successfully via webhook', [
+        Log::info('Shipping order processed successfully via webhook', [
             'order_id' => $order->id,
             'shipment_id' => $shipment->id,
             'item_count' => count($userItemIds),
@@ -362,7 +503,7 @@ class StripeWebhookController extends Controller
     {
         $user = User::find($order->user_id);
         if ($user && !$payment->fresh()->email_sent_at) {
-            \Log::info('Dispatching SendPaymentSuccessEmail Job (Webhook)', [
+            Log::info('Dispatching SendPaymentSuccessEmail Job (Webhook)', [
                 'payment_id' => $payment->id,
                 'user_id' => $user->id,
                 'user_email' => $user->email,
@@ -371,7 +512,7 @@ class StripeWebhookController extends Controller
             
             SendPaymentSuccessEmail::dispatch($payment, $user);
             $payment->update(['email_sent_at' => now()]);
-            \Log::info('SendPaymentSuccessEmail Job dispatched successfully');
+            Log::info('SendPaymentSuccessEmail Job dispatched successfully');
         }
     }
 
@@ -381,7 +522,7 @@ class StripeWebhookController extends Controller
             return; // already set
         }
         $year = date('Y');
-        \DB::transaction(function () use ($payment, $year) {
+        DB::transaction(function () use ($payment, $year) {
             $counter = \App\Models\InvoiceCounter::lockForUpdate()->firstOrCreate(['year' => $year], ['last_sequence' => 0]);
             $next = $counter->last_sequence + 1;
             $counter->update(['last_sequence' => $next]);

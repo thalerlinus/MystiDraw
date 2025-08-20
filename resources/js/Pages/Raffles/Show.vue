@@ -119,13 +119,6 @@
                         </div>
                     </div>
 
-                    <!-- Reservation Timer -->
-                    <ReservationTimer 
-                        :raffle-id="raffle.id"
-                        @update:reserved="handleReservedUpdate"
-                        @tickets-released="handleTicketsReleased"
-                    />
-
                     <!-- Preis Information -->
                     <div class="text-center mb-6 sm:mb-8 md:mb-10">
                         <div class="inline-block bg-gradient-to-r from-white/10 to-white/5 backdrop-blur-sm p-4 sm:p-6 md:p-8 rounded-2xl border border-white/20 shadow-2xl">
@@ -600,7 +593,6 @@ import JsonLd from '@/Components/JsonLd.vue';
 import MainLayout from '@/Layouts/MainLayout.vue';
 import ProductImageGallery from '@/Components/ProductImageGallery.vue';
 import TicketPurchaseModal from '@/Components/TicketPurchaseModal.vue';
-import ReservationTimer from '@/Components/ReservationTimer.vue';
 import axios from 'axios';
 import { getThumbUrl, getImageUrl } from '@/utils/cdn';
 
@@ -688,16 +680,8 @@ const filteredItems = computed(() => {
 });
 
 const availableTickets = computed(() => {
-    const totalTickets = props.raffle.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0;
-    const soldTickets = props.raffle.tickets?.length || 0;
-    const pendingTickets = props.raffle.pending_quantity || 0;
-    console.log('[Lose-Berechnung]', {
-        totalTickets,
-        soldTickets,
-        pendingTickets,
-        result: Math.max(0, totalTickets - soldTickets - pendingTickets)
-    });
-    return Math.max(0, totalTickets - soldTickets - pendingTickets);
+    // Neues Modell: Server liefert bereits raffle.tickets_available ohne pending reservations
+    return props.raffle.tickets_available ?? 0;
 });
 
 // Methods

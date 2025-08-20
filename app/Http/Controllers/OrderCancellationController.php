@@ -10,6 +10,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Stripe\StripeClient;
 
+/**
+ * @deprecated Reservierungsmodell entfernt – Pending Orders werden nicht mehr erzeugt. Endpoint kann entfernt werden.
+ */
 class OrderCancellationController extends Controller
 {
     /**
