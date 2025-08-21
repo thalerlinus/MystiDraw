@@ -1,8 +1,12 @@
 <script setup>
 import { Head, useForm } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import draggable from 'vuedraggable';
+
+const props = defineProps({
+  suggestedSku: { type: String, default: '' }
+});
 
 const form = useForm({ sku:'', name:'', description:'', base_cost:'', default_tier:'', images: [] });
 const imageFiles = ref([]);
@@ -14,6 +18,12 @@ const dragOptions = {
   chosenClass: 'sortable-chosen',
   dragClass: 'sortable-drag'
 };
+
+onMounted(()=>{
+  if(!form.sku) {
+    form.sku = props.suggestedSku;
+  }
+});
 
 function onFiles(e){
   const files = Array.from(e.target.files || []);
@@ -79,6 +89,7 @@ function submit(){
           required
           maxlength="64"
         />
+        <p class="mt-1 text-xs text-gray-500" v-if="props.suggestedSku">Vorschlag: {{ props.suggestedSku }} (kann geändert werden)</p>
         <div v-if="form.errors.sku" class="mt-1 text-sm text-red-600">{{ form.errors.sku }}</div>
       </div>
       <div>

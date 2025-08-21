@@ -29,13 +29,15 @@ class ProductController extends Controller
 
     public function create()
     {
-        return Inertia::render('Admin/Products/Create');
+        return Inertia::render('Admin/Products/Create', [
+            'suggestedSku' => Product::generateNextSku(),
+        ]);
     }
 
     public function store(Request $request, ImageUploadService $uploader)
     {
         $validated = $request->validate([
-            'sku' => 'required|string|max:64|unique:products,sku',
+            'sku' => 'nullable|string|max:64|unique:products,sku',
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'base_cost' => 'required|numeric|min:0',
@@ -43,6 +45,12 @@ class ProductController extends Controller
             'images' => 'sometimes|array',
             'images.*' => 'file|image|mimes:jpg,jpeg,png,webp|max:8192'
         ]);
+
+        // Falls keine SKU eingegeben wurde oder Kollision -> automatisch
+        if (empty($validated['sku']) || Product::where('sku', $validated['sku'])->exists()) {
+            $validated['sku'] = Product::generateNextSku();
+        }
+
         $validated['active'] = true;
         $files = $request->file('images', []);
         unset($validated['images']);

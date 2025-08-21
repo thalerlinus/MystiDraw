@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
 use Stripe\StripeClient;
 use Illuminate\Support\Facades\Log;
+use App\Jobs\SendRefundIssuedEmail; // hinzugefügt
 
 class StripeWebhookController extends Controller
 {
@@ -76,6 +77,7 @@ class StripeWebhookController extends Controller
                                 'provider_txn_id' => $pi->id,
                             ], [
                                 'order_id' => null,
+                                'user_id' => $userId,
                                 'amount' => $pi->amount_received ? $pi->amount_received / 100 : ($quantity * $unitPrice),
                                 'currency' => strtoupper($pi->currency),
                                 'status' => 'failed',
@@ -112,6 +114,7 @@ class StripeWebhookController extends Controller
                         // Payment
                         $payment = Payment::create([
                             'order_id' => $order->id,
+                            'user_id' => $userId,
                             'provider' => 'stripe',
                             'provider_txn_id' => $pi->id,
                             'amount' => $quantity * $unitPrice,
@@ -161,8 +164,25 @@ class StripeWebhookController extends Controller
                             Payment::where('provider','stripe')->where('provider_txn_id',$pi->id)
                                 ->update([
                                     'status' => 'refunded',
+                                    'user_id' => $userId,
                                     'raw_response->refund' => $refund->toArray(),
                                 ]);
+                            $payment = Payment::where('provider','stripe')->where('provider_txn_id',$pi->id)->first();
+                            // Gutschriftsnummer einmalig vergeben
+                            if ($payment && !$payment->credit_note_number) {
+                                $this->ensureCreditNoteNumber($payment);
+                            }
+                            // Refund Email dispatchen wenn noch nicht gesendet
+                            if ($payment && !$payment->refund_email_sent_at) {
+                                $userIdLocal = (int) ($pi->metadata['user_id'] ?? 0);
+                                if ($userIdLocal) {
+                                    $userLocal = \App\Models\User::find($userIdLocal);
+                                    if ($userLocal) {
+                                        SendRefundIssuedEmail::dispatch($payment, $userLocal);
+                                        $payment->update(['refund_email_sent_at' => now()]);
+                                    }
+                                }
+                            }
                             Log::info('Webhook no-reservation: Refund ausgelöst wegen Oversell', ['pi' => $pi->id]);
                         } else {
                             Log::warning('Webhook no-reservation: Kein latest_charge für Refund vorhanden', ['pi' => $pi->id]);
@@ -527,6 +547,25 @@ class StripeWebhookController extends Controller
             $next = $counter->last_sequence + 1;
             $counter->update(['last_sequence' => $next]);
             $payment->update(['invoice_number' => sprintf('MD-%s-%04d', $year, $next)]);
+        });
+    }
+
+    private function ensureCreditNoteNumber(\App\Models\Payment $payment): void
+    {
+        if ($payment->credit_note_number) { return; }
+        $year = date('Y');
+        DB::transaction(function () use ($payment, $year) {
+            $counter = \App\Models\InvoiceCounter::lockForUpdate()->firstOrCreate(['year' => $year], ['last_sequence' => 0, 'last_credit_sequence' => 0]);
+            // Falls Spalte last_credit_sequence noch nicht existiert -> try/catch
+            try {
+                $next = ($counter->last_credit_sequence ?? 0) + 1;
+                $counter->update(['last_credit_sequence' => $next]);
+            } catch (\Throwable $e) {
+                // Fallback: gleiche Sequenz wie Invoice (nicht ideal, aber verhindert Crash)
+                $next = ($counter->last_sequence ?? 0) + 1;
+                $counter->update(['last_sequence' => $next]);
+            }
+            $payment->update(['credit_note_number' => sprintf('CN-%s-%04d', $year, $next)]);
         });
     }
 }

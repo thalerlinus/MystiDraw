@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\UserItem;
 use App\Models\TicketOutcome;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -15,10 +14,10 @@ class InventoryController extends Controller
         $statusFilter = $request->get('status');
         $userId = $request->get('user_id');
         $delivered = $request->get('delivered');
-        $page = (int) $request->get('page', 1);
+        $page = max(1, (int) $request->get('page', 1));
         $perPage = 50;
 
-        // Fetch user items (reserved/shipped etc.)
+        // User Items
         $userItemQuery = UserItem::with(['product','user','ticketOutcome','shipmentItems.shipment']);
         if ($statusFilter && $statusFilter !== 'assigned') {
             $userItemQuery->where('status', $statusFilter);
@@ -36,6 +35,7 @@ class InventoryController extends Controller
         $userItems = $userItemQuery->get()->map(function($ui){
             return [
                 'id' => $ui->id,
+                'type' => 'user_item',
                 'user_id' => $ui->user_id,
                 'product' => $ui->product ? ['id'=>$ui->product->id,'name'=>$ui->product->name] : null,
                 'product_id' => $ui->product_id,
@@ -53,11 +53,11 @@ class InventoryController extends Controller
                             'delivered_at' => optional($si->shipment->delivered_at)?->toDateTimeString(),
                         ] : null
                     ];
-                }),
+                })->values(),
             ];
-        });
+        })->values()->toBase(); // toBase() vermeidet Eloquent Collection Methoden (getKey()) auf Arrays
 
-        // Fetch assigned outcomes if requested (or no specific status filter)
+        // Assigned Outcomes
         $assignedOutcomes = collect();
         if (!$statusFilter || $statusFilter === 'assigned') {
             $assignedQuery = TicketOutcome::where('status','assigned')
@@ -67,20 +67,21 @@ class InventoryController extends Controller
             }
             $assignedOutcomes = $assignedQuery->get()->map(function($to){
                 return [
-                    'id' => 'A'.$to->id, // distinguish from user_item ids
+                    'id' => 'A'.$to->id,
+                    'type' => 'assigned',
                     'user_id' => $to->ticket->user_id,
-                    'product' => $to->raffleItem && $to->raffleItem->product ? [
+                    'product' => ($to->raffleItem && $to->raffleItem->product) ? [
                         'id'=>$to->raffleItem->product->id,
                         'name'=>$to->raffleItem->product->name
                     ] : null,
-                    'product_id' => $to->product_id,
+                    'product_id' => $to->raffleItem?->product_id,
                     'status' => 'assigned',
                     'ticket_outcome_id' => $to->id,
                     'owned_at' => optional($to->assigned_at)?->toDateTimeString(),
                     'shipped_at' => null,
                     'shipment_items' => [],
                 ];
-            });
+            })->values()->toBase();
         }
 
         $all = $assignedOutcomes->merge($userItems)
@@ -89,11 +90,36 @@ class InventoryController extends Controller
             })->values();
 
         $total = $all->count();
+        $lastPage = (int) max(1, ceil($total / $perPage));
+        if ($page > $lastPage) { $page = $lastPage; }
         $paged = $all->slice(($page-1)*$perPage, $perPage)->values();
-        $items = new LengthAwarePaginator($paged, $total, $perPage, $page, [
-            'path' => $request->url(),
-            'query' => $request->query(),
-        ]);
+
+        // Manuelles Pagination-Format (kompatibel zu Inertia Tabellen)
+        $items = [
+            'data' => $paged,
+            'current_page' => $page,
+            'per_page' => $perPage,
+            'total' => $total,
+            'last_page' => $lastPage,
+            'from' => $total ? (($page - 1) * $perPage + 1) : null,
+            'to' => $total ? (($page - 1) * $perPage + $paged->count()) : null,
+            'links' => [
+                [ 'url' => $page > 1 ? $request->fullUrlWithQuery(['page'=>1]) : null, 'label' => '«', 'active' => false ],
+                [ 'url' => $page > 1 ? $request->fullUrlWithQuery(['page'=>$page-1]) : null, 'label' => '‹', 'active' => false ],
+            ]
+        ];
+
+        $window = 3;
+        for ($p = max(1,$page-$window); $p <= min($lastPage,$page+$window); $p++) {
+            $items['links'][] = [
+                'url' => $p === $page ? null : $request->fullUrlWithQuery(['page'=>$p]),
+                'label' => (string)$p,
+                'active' => $p === $page,
+            ];
+        }
+        $items['links'][] = [ 'url' => $page < $lastPage ? $request->fullUrlWithQuery(['page'=>$page+1]) : null, 'label' => '›', 'active' => false ];
+        $items['links'][] = [ 'url' => $page < $lastPage ? $request->fullUrlWithQuery(['page'=>$lastPage]) : null, 'label' => '»', 'active' => false ];
+
         return Inertia::render('Admin/Inventory/Index', [
             'items' => $items,
             'filters' => [

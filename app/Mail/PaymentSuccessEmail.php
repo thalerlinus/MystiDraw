@@ -6,7 +6,6 @@ use App\Models\Payment;
 use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
@@ -36,10 +35,11 @@ class PaymentSuccessEmail extends Mailable
     {
         // Rechnungsnummer generieren für Betreff
         $invoiceNumber = 'MD-' . date('Y') . '-' . str_pad($this->payment->id, 4, '0', STR_PAD_LEFT);
-        
-        return new Envelope(
-            subject: "🎉 Zahlungsbestätigung - Rechnung {$invoiceNumber} - MystiDraw",
-        );
+        $isShipping = isset($this->payment->order?->meta['shipping_cost']);
+        $subject = $isShipping
+            ? "✅ Versandkosten bezahlt – Rechnung {$invoiceNumber} - MystiDraw"
+            : "🎉 Zahlungsbestätigung - Rechnung {$invoiceNumber} - MystiDraw";
+        return new Envelope(subject: $subject);
     }
 
     /**
@@ -47,8 +47,13 @@ class PaymentSuccessEmail extends Mailable
      */
     public function content(): Content
     {
+        $isShipping = isset($this->payment->order?->meta['shipping_cost']);
         return new Content(
-            html: 'emails.payment-success',
+            html: $isShipping ? 'emails.payment-shipping-success' : 'emails.payment-success',
+            with: [
+                'payment' => $this->payment,
+                'user' => $this->user,
+            ]
         );
     }
 

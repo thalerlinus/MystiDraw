@@ -35,6 +35,7 @@ class RegisteredUserController extends Controller
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'terms_accepted' => 'required|accepted',
+            'newsletter' => 'sometimes|accepted',
         ]);
 
         $user = User::create([
@@ -42,6 +43,15 @@ class RegisteredUserController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);
+
+        if ($request->boolean('newsletter')) {
+            $user->newsletter_subscribed = true;
+            $user->save();
+            // Newsletter Subscription anlegen (für Angebote zu neuen Raffles & Gewinnspielen)
+            $user->newsletterSubscription()->create([
+                'subscribed_at' => now(),
+            ]);
+        }
 
         event(new Registered($user));
 

@@ -165,6 +165,7 @@
                     <!-- Gewinn-Carousel Section -->
                     <section class="mb-12 sm:mb-16 md:mb-20">
                         <div class="text-center mb-8 sm:mb-12 md:mb-16">
+                            <!-- FIX: geschlossene class und fehlende Klassen ergänzt -->
                             <div class="inline-flex items-center px-4 py-2 sm:px-6 sm:py-2 bg-gradient-to-r from-yellow-100 to-yellow-200 text-slate-800 rounded-full mb-4 sm:mb-6 font-semibold text-sm sm:text-base">
                                 <font-awesome-icon :icon="['fas', 'gift']" class="mr-2 text-yellow-600" />
                                 Deine Gewinnchancen
@@ -508,6 +509,181 @@
                     </div>
                 </section>
 
+                <!-- Newsletter Subscribe UI oder Success Message -->
+                <section v-if="!isNewsletterSubscribed || subscribeSuccess" class="mb-8 sm:mb-12 md:mb-16 lg:mb-20">
+                    <!-- Newsletter Abonnement Sektion -->
+                    <div v-if="!subscribeSuccess" class="relative overflow-hidden rounded-xl sm:rounded-2xl lg:rounded-3xl bg-gradient-to-br from-white via-yellow-50 to-slate-50 p-4 sm:p-6 md:p-10 lg:p-14 shadow-lg sm:shadow-xl border border-yellow-200/60">
+                        <!-- Decorative Elements -->
+                        <div class="absolute top-0 right-0 w-20 h-20 sm:w-32 sm:h-32 md:w-48 md:h-48 bg-gradient-to-br from-yellow-400/20 to-transparent rounded-full -translate-y-10 translate-x-10 sm:-translate-y-16 sm:translate-x-16 md:-translate-y-24 md:translate-x-24"></div>
+                        <div class="absolute bottom-0 left-0 w-16 h-16 sm:w-24 sm:h-24 md:w-36 md:h-36 bg-gradient-to-tr from-yellow-300/15 to-transparent rounded-full translate-y-8 -translate-x-8 sm:translate-y-12 sm:-translate-x-12 md:translate-y-18 md:-translate-x-18"></div>
+                        
+                        <div class="relative z-10 max-w-3xl mx-auto text-center">
+                            <div class="inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 md:px-6 md:py-3 bg-yellow-100 text-slate-800 rounded-full mb-4 sm:mb-6 md:mb-8 font-semibold text-xs sm:text-sm md:text-base border border-yellow-200 shadow-sm">
+                                <font-awesome-icon :icon="['fas','bell']" class="mr-1.5 sm:mr-2 text-yellow-600 text-xs sm:text-sm" />
+                                <span class="hidden xs:inline">Verpasse keine Raffles mehr</span>
+                                <span class="xs:hidden">Neue Raffles</span>
+                            </div>
+                            
+                            <h2 class="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black text-slate-900 mb-3 sm:mb-4 md:mb-6 leading-tight px-2">
+                                Bleib auf dem <span class="bg-gradient-to-r from-yellow-500 to-yellow-600 bg-clip-text text-transparent">Laufenden!</span>
+                            </h2>
+                            
+                            <p class="text-slate-600 text-sm sm:text-base md:text-lg mb-6 sm:mb-8 leading-relaxed max-w-2xl mx-auto px-2">
+                                Erhalte exklusive Updates zu neuen Raffles<span class="hidden sm:inline">, Early-Bird Specials und limitierten Aktionen</span> direkt in dein Postfach.
+                            </p>
+                            
+                            <!-- Features List -->
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 md:gap-6 mb-6 sm:mb-8 md:mb-10 px-2">
+                                <div class="flex items-center justify-center sm:justify-start text-slate-700">
+                                    <div class="w-6 h-6 sm:w-8 sm:h-8 bg-yellow-200 rounded-full flex items-center justify-center mr-2 sm:mr-3 flex-shrink-0">
+                                        <font-awesome-icon :icon="['fas', 'zap']" class="text-yellow-600 text-xs sm:text-sm" />
+                                    </div>
+                                    <span class="text-xs sm:text-sm md:text-base font-medium">Exklusive Previews</span>
+                                </div>
+                                <div class="flex items-center justify-center sm:justify-start text-slate-700">
+                                    <div class="w-6 h-6 sm:w-8 sm:h-8 bg-yellow-200 rounded-full flex items-center justify-center mr-2 sm:mr-3 flex-shrink-0">
+                                        <font-awesome-icon :icon="['fas', 'clock']" class="text-yellow-600 text-xs sm:text-sm" />
+                                    </div>
+                                    <span class="text-xs sm:text-sm md:text-base font-medium">Early-Bird Zugang</span>
+                                </div>
+                                <div class="flex items-center justify-center sm:justify-start text-slate-700">
+                                    <div class="w-6 h-6 sm:w-8 sm:h-8 bg-yellow-200 rounded-full flex items-center justify-center mr-2 sm:mr-3 flex-shrink-0">
+                                        <font-awesome-icon :icon="['fas', 'percentage']" class="text-yellow-600 text-xs sm:text-sm" />
+                                    </div>
+                                    <span class="text-xs sm:text-sm md:text-base font-medium">Spezielle Rabatte</span>
+                                </div>
+                            </div>
+                            
+                            <div class="flex justify-center px-4">
+                                <!-- Für eingeloggte User -->
+                                <button 
+                                    v-if="$page.props.auth?.user"
+                                    @click="subscribeNewsletter" 
+                                    :disabled="subscribing" 
+                                    class="group relative inline-flex items-center justify-center px-6 py-3 sm:px-8 sm:py-4 rounded-lg sm:rounded-xl font-bold text-white text-sm sm:text-base md:text-lg bg-gradient-to-r from-slate-800 to-slate-900 hover:from-slate-700 hover:to-slate-800 transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-60 disabled:cursor-not-allowed transform hover:scale-105 w-full sm:w-auto max-w-sm"
+                                >
+                                    <span v-if="!subscribing" class="flex items-center">
+                                        <font-awesome-icon :icon="['fas','envelope-open-text']" class="mr-2 text-xs sm:text-sm" /> 
+                                        <span class="hidden xs:inline">Newsletter abonnieren</span>
+                                        <span class="xs:hidden">Abonnieren</span>
+                                    </span>
+                                    <span v-else class="flex items-center">
+                                        <svg class="animate-spin -ml-1 mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg> 
+                                        <span class="hidden xs:inline">Abonnieren...</span>
+                                        <span class="xs:hidden">...</span>
+                                    </span>
+                                </button>
+                                
+                                <!-- Für nicht-eingeloggte User -->
+                                <button 
+                                    v-else
+                                    @click="goToLogin"
+                                    class="group relative inline-flex items-center justify-center px-6 py-3 sm:px-8 sm:py-4 rounded-lg sm:rounded-xl font-bold text-white text-sm sm:text-base md:text-lg bg-gradient-to-r from-slate-800 to-slate-900 hover:from-slate-700 hover:to-slate-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 w-full sm:w-auto max-w-sm"
+                                >
+                                    <span class="flex items-center">
+                                        <font-awesome-icon :icon="['fas','user']" class="mr-2 text-xs sm:text-sm" /> 
+                                        <span class="hidden xs:inline">Anmelden & Newsletter abonnieren</span>
+                                        <span class="xs:hidden">Anmelden</span>
+                                    </span>
+                                </button>
+                            </div>
+                            
+                            <!-- Success Message -->
+                            <div v-if="subscribeSuccess" class="mt-4 sm:mt-6 p-3 sm:p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg sm:rounded-xl shadow-lg transition-all duration-500 transform mx-2">
+                                <div class="flex flex-col sm:flex-row items-center justify-center text-green-700 font-bold text-sm sm:text-base md:text-lg">
+                                    <div class="w-6 h-6 sm:w-8 sm:h-8 bg-green-100 rounded-full flex items-center justify-center mb-2 sm:mb-0 sm:mr-3 animate-pulse">
+                                        <font-awesome-icon :icon="['fas','check-circle']" class="text-green-600 text-sm sm:text-base" />
+                                    </div>
+                                    <div class="text-center sm:text-left">
+                                        <div class="font-black">Erfolgreich abonniert! 🎉</div>
+                                        <div class="text-xs sm:text-sm font-medium text-green-600 mt-1">Du erhältst ab sofort exklusive Updates</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Error Message -->
+                            <div v-if="subscribeError" class="mt-4 sm:mt-6 p-3 sm:p-4 bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-lg sm:rounded-xl shadow-lg mx-2">
+                                <div class="flex flex-col sm:flex-row items-center justify-center text-red-700 font-medium text-sm sm:text-base">
+                                    <div class="w-6 h-6 sm:w-8 sm:h-8 bg-red-100 rounded-full flex items-center justify-center mb-2 sm:mb-0 sm:mr-3">
+                                        <font-awesome-icon :icon="['fas','triangle-exclamation']" class="text-red-600 text-sm sm:text-base" />
+                                    </div>
+                                    <div class="text-center sm:text-left">
+                                        <div class="font-bold">Fehler beim Abonnieren</div>
+                                        <div class="text-xs sm:text-sm">{{ subscribeError }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <p class="mt-4 sm:mt-6 text-xs text-slate-500 px-2">
+                                <font-awesome-icon :icon="['fas', 'shield-alt']" class="mr-1" />
+                                <span class="hidden xs:inline">Jederzeit abmeldbar • Kein Spam • Deine Daten sind sicher</span>
+                                <span class="xs:hidden">Kein Spam • Sicher</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Success Message Sektion (ersetzt die Newsletter-Box) -->
+                    <div v-if="subscribeSuccess" class="relative overflow-hidden rounded-xl sm:rounded-2xl lg:rounded-3xl bg-gradient-to-br from-green-50 via-emerald-50 to-green-100 p-4 sm:p-6 md:p-10 lg:p-14 shadow-lg sm:shadow-xl border border-green-200/60">
+                        <!-- Decorative Elements - grün -->
+                        <div class="absolute top-0 right-0 w-20 h-20 sm:w-32 sm:h-32 md:w-48 md:h-48 bg-gradient-to-br from-green-400/20 to-transparent rounded-full -translate-y-10 translate-x-10 sm:-translate-y-16 sm:translate-x-16 md:-translate-y-24 md:translate-x-24"></div>
+                        <div class="absolute bottom-0 left-0 w-16 h-16 sm:w-24 sm:h-24 md:w-36 md:h-36 bg-gradient-to-tr from-emerald-300/15 to-transparent rounded-full translate-y-8 -translate-x-8 sm:translate-y-12 sm:-translate-x-12 md:translate-y-18 md:-translate-x-18"></div>
+                        
+                        <div class="relative z-10 max-w-3xl mx-auto text-center">
+                            <div class="inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 md:px-6 md:py-3 bg-green-100 text-green-800 rounded-full mb-4 sm:mb-6 md:mb-8 font-semibold text-xs sm:text-sm md:text-base border border-green-200 shadow-sm">
+                                <font-awesome-icon :icon="['fas','check-circle']" class="mr-1.5 sm:mr-2 text-green-600 animate-pulse text-xs sm:text-sm" />
+                                <span class="hidden xs:inline">Newsletter erfolgreich abonniert</span>
+                                <span class="xs:hidden">Abonniert!</span>
+                            </div>
+                            
+                            <h2 class="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black text-slate-900 mb-3 sm:mb-4 md:mb-6 leading-tight px-2">
+                                Perfekt! <span class="bg-gradient-to-r from-green-500 to-emerald-600 bg-clip-text text-transparent">Du bist dabei! 🎉</span>
+                            </h2>
+                            
+                            <p class="text-slate-600 text-sm sm:text-base md:text-lg mb-6 sm:mb-8 leading-relaxed max-w-2xl mx-auto px-2">
+                                Du erhältst ab sofort exklusive Updates zu neuen Raffles<span class="hidden sm:inline">, Early-Bird Specials und limitierten Aktionen</span> direkt in dein Postfach.
+                            </p>
+                            
+                            <!-- Success Features -->
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 md:gap-6 mb-6 sm:mb-8 md:mb-10 px-2">
+                                <div class="flex items-center justify-center sm:justify-start text-slate-700">
+                                    <div class="w-6 h-6 sm:w-8 sm:h-8 bg-green-200 rounded-full flex items-center justify-center mr-2 sm:mr-3 flex-shrink-0">
+                                        <font-awesome-icon :icon="['fas', 'envelope']" class="text-green-600 text-xs sm:text-sm" />
+                                    </div>
+                                    <span class="text-xs sm:text-sm md:text-base font-medium">E-Mail bestätigt</span>
+                                </div>
+                                <div class="flex items-center justify-center sm:justify-start text-slate-700">
+                                    <div class="w-6 h-6 sm:w-8 sm:h-8 bg-green-200 rounded-full flex items-center justify-center mr-2 sm:mr-3 flex-shrink-0">
+                                        <font-awesome-icon :icon="['fas', 'bell']" class="text-green-600 text-xs sm:text-sm" />
+                                    </div>
+                                    <span class="text-xs sm:text-sm md:text-base font-medium">Benachrichtigungen aktiv</span>
+                                </div>
+                                <div class="flex items-center justify-center sm:justify-start text-slate-700">
+                                    <div class="w-6 h-6 sm:w-8 sm:h-8 bg-green-200 rounded-full flex items-center justify-center mr-2 sm:mr-3 flex-shrink-0">
+                                        <font-awesome-icon :icon="['fas', 'gift']" class="text-green-600 text-xs sm:text-sm" />
+                                    </div>
+                                    <span class="text-xs sm:text-sm md:text-base font-medium">Exklusive Vorteile</span>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-white/50 backdrop-blur-sm rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6 border border-green-200 mx-2">
+                                <p class="text-xs sm:text-sm text-slate-600 mb-2 sm:mb-3">
+                                    <font-awesome-icon :icon="['fas', 'info-circle']" class="mr-2 text-green-600" />
+                                    <span class="hidden xs:inline">Du kannst den Newsletter jederzeit in deinen Kontoeinstellungen verwalten</span>
+                                    <span class="xs:hidden">Verwaltung in den Kontoeinstellungen</span>
+                                </p>
+                                <p class="text-xs text-slate-500">
+                                    <font-awesome-icon :icon="['fas', 'shield-alt']" class="mr-1" />
+                                    <span class="hidden xs:inline">Kein Spam • Deine Daten sind sicher • Jederzeit abmeldbar</span>
+                                    <span class="xs:hidden">Sicher • Abmeldbar</span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- CTA Section -->
                 <section class="relative text-center py-12 sm:py-16 md:py-20 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 rounded-2xl sm:rounded-3xl text-white overflow-hidden shadow-2xl">
                     <!-- Background decoration -->
@@ -525,11 +701,7 @@
                             Bereit für deine 
                             <span class="bg-gradient-to-r from-yellow-300 to-yellow-500 bg-clip-text text-transparent">Überraschung?</span>
                         </h2>
-                        <p class="text-base sm:text-lg md:text-xl text-slate-300 mb-8 sm:mb-10 max-w-3xl mx-auto leading-relaxed">
-                            Jedes Los ist ein Gewinn! Bei MystiDraw gibt es keine Nieten, nur Überraschungen in verschiedenen Kategorien. 
-                            Sichere dir jetzt deine Chance auf tolle Preise.
-                        </p>
-                        
+                       
                         <div class="space-y-4 sm:space-y-6">
                             <button
                                 v-if="raffle.status === 'live' && raffle.tickets_available > 0"
@@ -628,6 +800,9 @@ const currentPrizeIndex = ref(0);
 const selectedTier = ref('all');
 const showPurchaseModal = ref(false);
 const selectedQuantity = ref(1);
+const subscribing = ref(false);
+const subscribeSuccess = ref(false);
+const subscribeError = ref('');
 
 // Auto-rotate prize carousel
 let prizeInterval;
@@ -649,6 +824,32 @@ onUnmounted(() => {
 // Computed properties
 const uniqueTiers = computed(() => {
     return [...new Set(props.raffle.items.map(item => item.tier))].sort();
+});
+
+const isNewsletterSubscribed = computed(() => {
+    const user = page.props.auth?.user;
+    if (!user || !user.newsletter_subscription) {
+        return false;
+    }
+    
+    const subscription = user.newsletter_subscription;
+    
+    // Wenn es kein subscribed_at gibt, ist er nicht abonniert
+    if (!subscription.subscribed_at) {
+        return false;
+    }
+    
+    // Wenn es kein unsubscribed_at gibt, ist er abonniert
+    if (!subscription.unsubscribed_at) {
+        return true;
+    }
+    
+    // Wenn beide vorhanden sind, prüfen welches später ist
+    const subscribedDate = new Date(subscription.subscribed_at);
+    const unsubscribedDate = new Date(subscription.unsubscribed_at);
+    
+    // Abonniert wenn subscribed_at nach unsubscribed_at ist
+    return subscribedDate > unsubscribedDate;
 });
 
 const sortedCarouselItems = computed(() => {
@@ -764,6 +965,31 @@ const handleTicketsReleased = (releasedCount) => {
     console.log(`${releasedCount} Lose wurden soeben freigegeben`);
     // Optional: Seite neu laden um aktuelle Verfügbarkeit anzuzeigen
     // window.location.reload();
+};
+
+// Newsletter Subscription
+const subscribeNewsletter = async () => {
+    if (subscribing.value) return;
+    subscribing.value = true;
+    subscribeError.value = '';
+    subscribeSuccess.value = false;
+    try {
+        await axios.post('/api/newsletter/subscribe');
+        subscribeSuccess.value = true;
+        if (page.props.auth?.user) {
+            page.props.auth.user.newsletter_subscription = { subscribed_at: new Date().toISOString() };
+        }
+        // Erfolgsmeldung bleibt dauerhaft sichtbar - Timeout entfernt
+    } catch (e) {
+        subscribeError.value = e.response?.data?.message || 'Fehler beim Abonnieren.';
+    } finally {
+        subscribing.value = false;
+    }
+};
+
+// Zur Login-Seite weiterleiten
+const goToLogin = () => {
+    window.location.href = route('login');
 };
 </script>
 

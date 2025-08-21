@@ -13,6 +13,7 @@ const form = useForm({
     password: '',
     password_confirmation: '',
     terms_accepted: false,
+    newsletter: false,
 });
 
 const submit = () => {
@@ -151,6 +152,26 @@ const submit = () => {
                                     </div>
                                 </div>
                                 <InputError class="mt-2" :message="form.errors.terms_accepted" />
+                            </div>
+
+                            <!-- Newsletter Checkbox -->
+                            <div class="space-y-4">
+                                <div class="flex items-start">
+                                    <div class="flex items-center h-5 mt-1">
+                                        <Checkbox
+                                            id="newsletter"
+                                            name="newsletter"
+                                            v-model:checked="form.newsletter"
+                                            class="rounded border-navy-300 focus:ring-gold-400/20"
+                                        />
+                                    </div>
+                                    <div class="ml-3 text-sm">
+                                        <label for="newsletter" class="text-navy-700 leading-relaxed">
+                                            Ich möchte den Newsletter mit Angeboten zu neuen Raffles & Gewinnspielen erhalten (Abmeldung jederzeit möglich)
+                                        </label>
+                                    </div>
+                                </div>
+                                <InputError class="mt-2" :message="form.errors.newsletter" />
                             </div>
 
                             <PrimaryButton

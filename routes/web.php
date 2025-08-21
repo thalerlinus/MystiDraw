@@ -11,10 +11,16 @@ use App\Http\Controllers\RafflePurchaseController;
 use App\Http\Controllers\ShippingPurchaseController;
 use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\TicketOpeningController;
+use App\Http\Controllers\NewsletterController;
+use App\Http\Controllers\Admin\NewsletterAdminController;
+use App\Http\Controllers\Api\NewsletterSubscriptionController;
 // Sitemap
 use Spatie\Sitemap\Sitemap;
 use Spatie\Sitemap\Tags\Url;
 use App\Models\Raffle;
+use Illuminate\Http\Request;
+use App\Models\NewsletterSubscription;
+use Illuminate\Support\Facades\Auth;
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/raffles', [RaffleBrowseController::class, 'index'])->name('raffles.index');
@@ -45,8 +51,11 @@ Route::get('/cookie-richtlinie', function () {
     return Inertia::render('Legal/CookiePolicy');
 })->name('cookie-policy');
 
+// Public newsletter unsubscribe route (must be outside auth)
+Route::get('/newsletter/unsubscribe/{token}', [NewsletterController::class, 'unsubscribe'])->name('newsletter.unsubscribe');
+
 Route::get('/dashboard', function () {
-    if (auth()->check() && auth()->user()->is_admin) {
+    if (Auth::check() && Auth::user()->is_admin) {
         return redirect()->route('admin.dashboard');
     }
     return Inertia::render('Dashboard');
@@ -73,6 +82,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::post('/raffles/{raffle}/purchase/intent', [RafflePurchaseController::class, 'createIntent'])->name('raffles.purchase.intent');
     Route::get('/raffles/{raffle}/availability', [\App\Http\Controllers\RaffleAvailabilityController::class, 'show'])->name('raffles.availability');
+    Route::post('/api/newsletter/subscribe', [NewsletterSubscriptionController::class, 'store'])->middleware('auth');
 });
 
 // Stripe webhook (no auth, CSRF exempt because Stripe signs it)
@@ -104,6 +114,12 @@ Route::middleware(['auth', 'verified', 'admin'])
         Route::post('raffles/{raffle}/gift', [\App\Http\Controllers\Admin\RaffleController::class, 'giftTickets'])->name('raffles.gift');
         // User Suche (für Dropdown)
         Route::get('users/search', \App\Http\Controllers\Admin\UserSearchController::class)->name('users.search');
+        Route::get('invoices', [\App\Http\Controllers\Admin\InvoiceController::class, 'index'])->name('invoices.index');
+        Route::get('invoices/{payment}/download', [\App\Http\Controllers\Admin\InvoiceController::class, 'download'])->name('invoices.download');
+        Route::get('credit-notes', [\App\Http\Controllers\Admin\CreditNoteController::class, 'index'])->name('credit_notes.index');
+        Route::get('credit-notes/{payment}/download', [\App\Http\Controllers\Admin\CreditNoteController::class, 'download'])->name('credit_notes.download');
+        Route::get('newsletter', [NewsletterAdminController::class, 'index'])->name('newsletter.index');
+        Route::post('newsletter/send', [NewsletterAdminController::class, 'send'])->name('newsletter.send');
     });
 
 // Dynamic robots.txt (production vs non-production behavior)
