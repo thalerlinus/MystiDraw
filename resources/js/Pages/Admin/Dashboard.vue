@@ -327,6 +327,16 @@ const openShipments = computed(()=> page.props.openShipments || []);
                   <p class="text-xs text-gray-500">Labels erstellen</p>
                 </div>
               </Link>
+              <!-- Neutral: Recoveries -->
+              <Link href="/admin/recoveries" class="group flex items-center gap-4 p-4 rounded-xl bg-gray-50 border border-gray-200 text-gray-900 hover:bg-white hover:border-gray-300 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 h-full">
+                <div class="w-11 h-11 bg-white border border-gray-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <font-awesome-icon :icon="['fas','recycle']" class="w-5 h-5 text-gray-600" />
+                </div>
+                <div class="space-y-0.5">
+                  <p class="font-semibold leading-tight">Recoveries</p>
+                  <p class="text-xs text-gray-500">Freigaben einsehen</p>
+                </div>
+              </Link>
               <!-- Neutral: Analytics -->
               <Link href="/admin/analytics" class="group flex items-center gap-4 p-4 rounded-xl bg-gray-50 border border-gray-200 text-gray-900 hover:bg-white hover:border-gray-300 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 h-full">
                 <div class="w-11 h-11 bg-white border border-gray-200 rounded-lg flex items-center justify-center flex-shrink-0">

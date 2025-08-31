@@ -164,6 +164,7 @@ function submitProduct(){
             <td class="px-4 py-2 text-xs text-gray-600">{{ c.parent ? c.parent.name : '-' }}</td>
             <td class="px-4 py-2 text-center">
               <div class="flex justify-center gap-1">
+                <Link :href="`/admin/categories/${c.id}/overview`" class="inline-flex items-center rounded bg-white px-2 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-300 hover:bg-emerald-50">Übersicht</Link>
                 <button @click="openEdit(c)" class="inline-flex items-center rounded bg-white px-2 py-1 text-xs font-medium text-indigo-600 ring-1 ring-indigo-300 hover:bg-indigo-50">Bearbeiten</button>
                 <button @click="openDelete(c)" class="inline-flex items-center rounded bg-white px-2 py-1 text-xs font-medium text-red-600 ring-1 ring-red-300 hover:bg-red-50">Löschen</button>
               </div>

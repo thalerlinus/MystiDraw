@@ -27,6 +27,17 @@
           </div>
         </div>
 
+        <!-- Inventory Policy Notice -->
+        <div class="bg-indigo-50/80 backdrop-blur-sm border border-indigo-200 rounded-xl p-4 sm:p-5 mb-6 sm:mb-8 shadow">
+          <div class="flex items-start gap-3">
+            <font-awesome-icon :icon="['fas','info-circle']" class="text-indigo-600 mt-0.5" />
+            <p class="text-navy-800 text-sm sm:text-base">
+              Hinweis: Gezogene Items verbleiben höchstens <strong>2 Monate</strong> in deinem Inventar. Ohne rechtzeitige Versandanforderung verfallen sie und können nicht mehr versendet werden. Mehr Infos in den
+              <Link :href="route('agb')" class="font-semibold text-indigo-800 underline underline-offset-2 hover:text-indigo-900">AGB</Link>.
+            </p>
+          </div>
+        </div>
+
         <!-- Statistics -->
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-12">
           <!-- Total Prizes -->
@@ -298,7 +309,7 @@
 import MainLayout from '@/Layouts/MainLayout.vue'
 import PrizeGroupCard from '@/Components/PrizeGroupCard.vue'
 import { defineProps, ref } from 'vue'
-import { router } from '@inertiajs/vue3'
+import { router, Link } from '@inertiajs/vue3'
 
 const props = defineProps({
   inventory: Object,

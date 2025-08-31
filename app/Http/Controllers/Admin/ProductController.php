@@ -7,6 +7,7 @@ use App\Services\ImageUploadService;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\DB;
 
 class ProductController extends Controller
 {
@@ -91,28 +92,64 @@ class ProductController extends Controller
         return Inertia::render('Admin/Products/Show', ['product' => $product]);
     }
 
-    public function edit(Product $product)
+    public function overview(Request $request)
     {
-        $product->load('images');
-        $bunnyPull = config('filesystems.disks.bunnycdn.pull_zone');
-        return Inertia::render('Admin/Products/Edit', [
-            'product' => $product,
-            'bunny' => [
-                'pull_zone' => $bunnyPull,
-            ],
-        ]);
-    }
+        // Optional: filter by active/q later
+        $products = Product::query()
+            ->withCount([
+                'raffleItems as total_in_raffles' => function($q){
+                    $q->select(DB::raw('coalesce(sum(quantity_total),0)'));
+                },
+                'raffleItems as awarded_in_raffles' => function($q){
+                    $q->select(DB::raw('coalesce(sum(quantity_awarded),0)'));
+                },
+            ])
+            ->get(['id','sku','name','thumbnail_path','active','default_tier']);
 
-    public function update(Request $request, Product $product)
-    {
-        $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'base_cost' => 'required|numeric|min:0',
-            'default_tier' => 'nullable|string|in:A,B,C,D,E',
-            'active' => 'boolean'
+        $userCounts = \App\Models\UserItem::select(
+                'product_id',
+                DB::raw("SUM(CASE WHEN status='owned' THEN 1 ELSE 0 END) as owned"),
+                DB::raw("SUM(CASE WHEN status='reserved_for_shipping' THEN 1 ELSE 0 END) as reserved"),
+                DB::raw("SUM(CASE WHEN status='shipped' THEN 1 ELSE 0 END) as shipped")
+            )
+            ->whereIn('product_id', $products->pluck('id'))
+            ->groupBy('product_id')
+            ->get()
+            ->keyBy('product_id');
+
+        $recoveries = \App\Models\InventoryRecovery::select('product_id', DB::raw('SUM(quantity) as recovered_total'))
+            ->whereIn('product_id', $products->pluck('id'))
+            ->groupBy('product_id')
+            ->get()
+            ->keyBy('product_id');
+
+        $data = $products->map(function($p) use ($userCounts, $recoveries){
+            $total = (int)($p->total_in_raffles ?? 0);
+            $awarded = (int)($p->awarded_in_raffles ?? 0);
+            $remaining = max(0, $total - $awarded);
+            $u = $userCounts->get($p->id);
+            $rec = $recoveries->get($p->id);
+            return [
+                'id' => $p->id,
+                'sku' => $p->sku,
+                'name' => $p->name,
+                'active' => (bool)$p->active,
+                'default_tier' => $p->default_tier,
+                'thumbnail_path' => $p->thumbnail_path,
+                'total_in_raffles' => $total,
+                'awarded_in_raffles' => $awarded,
+                'remaining_in_raffles' => $remaining,
+                'owned_by_users' => (int)($u->owned ?? 0),
+                'reserved_for_shipping' => (int)($u->reserved ?? 0),
+                'shipped_to_users' => (int)($u->shipped ?? 0),
+                'recovered_total' => (int)($rec->recovered_total ?? 0),
+            ];
+        })->values();
+
+        $bunnyPull = config('filesystems.disks.bunnycdn.pull_zone');
+        return Inertia::render('Admin/Products/Overview', [
+            'products' => $data,
+            'bunny' => [ 'pull_zone' => $bunnyPull ],
         ]);
-        $product->update($data);
-        return back()->with('success','Gespeichert');
     }
 }

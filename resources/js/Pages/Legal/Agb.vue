@@ -116,7 +116,7 @@ import { Head, Link } from '@inertiajs/vue3';
               <p>Gewonnene physische Items werden in Ihrem Inventar geführt, bis Sie den Versand anfordern. Mehrere Items können gemeinsam versendet werden.</p>
               <p>Nach Versandanforderung und Zahlung der Versandpauschale erfolgt die Bearbeitung i. d. R. innerhalb von 1–3 Werktagen; Tracking wird bereitgestellt.</p>
               <p>Sofern nicht anders angegeben, handelt es sich um Neuware; etwaige Abweichungen (OVP geöffnet/Gebraucht) sind je Artikel gekennzeichnet.</p>
-              <p><strong>Aufbewahrungsfrist:</strong> Nicht angeforderte Inventar-Items werden mindestens 12 Monate aufbewahrt (E-Mail-Erinnerung). Danach können wir die Einlagerung verlängern, spenden oder verwerten; ein Anspruch auf Auszahlung des Warenwerts besteht nicht.</p>
+              <p><strong>Maximale Verweildauer im Inventar (2 Monate):</strong> Gezogene Items verbleiben <strong>höchstens 2 Monate</strong> in Ihrem Inventar. Wird innerhalb dieser Frist kein Versand angefordert und die Versandpauschale nicht bezahlt, <strong>verfallen die Items ersatzlos</strong>, können nicht mehr versendet werden und werden aus dem Inventar entfernt. Wir erinnern Sie rechtzeitig per E‑Mail, sofern Benachrichtigungen aktiviert sind.</p>
             </div>
           </div>
 
@@ -260,7 +260,7 @@ import { Head, Link } from '@inertiajs/vue3';
 
           <!-- Stand -->
           <div class="mb-8 p-4 bg-navy-100 rounded-2xl border border-navy-200 text-center">
-            <p class="text-navy-700"><strong>Stand:</strong> 19. August 2025</p>
+            <p class="text-navy-700"><strong>Stand:</strong> 31. August 2025</p>
           </div>
 
           <!-- Back -->

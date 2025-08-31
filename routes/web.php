@@ -98,10 +98,14 @@ Route::middleware(['auth', 'verified', 'admin'])
     ->name('admin.')
     ->group(function () {
         Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
-        Route::resource('raffles', \App\Http\Controllers\Admin\RaffleController::class)->except(['destroy']);
-        Route::resource('products', \App\Http\Controllers\Admin\ProductController::class)->except(['destroy']);
+    Route::resource('raffles', \App\Http\Controllers\Admin\RaffleController::class)->except(['destroy']);
+    // Overview muss VOR dem Resource-Controller stehen, sonst matcht products/{product}
+    Route::get('products/overview', [\App\Http\Controllers\Admin\ProductController::class, 'overview'])->name('products.overview');
+    Route::resource('products', \App\Http\Controllers\Admin\ProductController::class)->except(['destroy']);
         // Kategorien (inkl. Löschen)
         Route::resource('categories', \App\Http\Controllers\Admin\CategoryController::class)->only(['index', 'store', 'update', 'destroy']);
+    // Kategorie-Produktübersicht
+    Route::get('categories/{category}/overview', [\App\Http\Controllers\Admin\CategoryController::class, 'overview'])->name('categories.overview');
         // Produktbilder
         Route::post('products/{product}/images', [\App\Http\Controllers\Admin\ProductImageController::class, 'store'])->name('products.images.store');
         Route::put('products/{product}/images/reorder', [\App\Http\Controllers\Admin\ProductImageController::class, 'reorder'])->name('products.images.reorder');
@@ -110,6 +114,10 @@ Route::middleware(['auth', 'verified', 'admin'])
         Route::resource('orders', \App\Http\Controllers\Admin\OrderController::class)->only(['index', 'show']);
         Route::resource('shipments', \App\Http\Controllers\Admin\ShipmentController::class)->only(['index', 'show', 'update']);
         Route::get('inventory', [\App\Http\Controllers\Admin\InventoryController::class, 'index'])->name('inventory.index');
+    // Inventory Recoveries overview & management
+    Route::get('recoveries', [\App\Http\Controllers\Admin\InventoryRecoveryController::class, 'index'])->name('recoveries.index');
+    Route::put('recoveries/{recovery}', [\App\Http\Controllers\Admin\InventoryRecoveryController::class, 'update'])->name('recoveries.update');
+    Route::delete('recoveries/{recovery}', [\App\Http\Controllers\Admin\InventoryRecoveryController::class, 'destroy'])->name('recoveries.destroy');
         // Tickets an Nutzer verschenken (Admin)
         Route::post('raffles/{raffle}/gift', [\App\Http\Controllers\Admin\RaffleController::class, 'giftTickets'])->name('raffles.gift');
         // User Suche (für Dropdown)

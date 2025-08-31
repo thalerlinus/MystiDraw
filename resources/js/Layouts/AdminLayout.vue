@@ -15,6 +15,7 @@ const links = [
   { href: '/admin/orders', label: 'Bestellungen', icon: ['fas','shopping-cart'] },
   { href: '/admin/shipments', label: 'Versand', icon: ['fas','truck'] },
   { href: '/admin/inventory', label: 'Inventar', icon: ['fas','warehouse'] },
+  { href: '/admin/recoveries', label: 'Recoveries', icon: ['fas','recycle'] },
   { href: '/admin/invoices', label: 'Rechnungen', icon: ['fas','file-invoice-dollar'] },
   { href: '/admin/credit-notes', label: 'Gutschriften', icon: ['fas','file-invoice'] },
   { href: '/admin/newsletter', label: 'Newsletter', icon: ['fas','envelope-open-text'] },

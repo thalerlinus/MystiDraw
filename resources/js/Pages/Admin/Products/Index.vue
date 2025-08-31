@@ -23,6 +23,7 @@ const openImage = (url) => { if(!url) return; previewImageUrl.value = url; showI
       <form method="get" class="flex items-center gap-2">
         <input type="text" name="q" placeholder="Suche" class="rounded border-gray-300" :value="filters.q" />
       </form>
+      <Link href="/admin/products/overview" class="rounded bg-emerald-600 px-3 py-2 text-sm font-medium text-white">Übersicht</Link>
       <Link href="/admin/products/create" class="rounded bg-indigo-600 px-3 py-2 text-sm font-medium text-white">Neu</Link>
     </div>
     <div class="overflow-hidden rounded-lg bg-white shadow ring-1 ring-gray-100">

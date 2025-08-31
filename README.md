@@ -100,6 +100,10 @@
 
 ## 📊 Datenbank-Design
 
+Für das vollständige, aus den Migrationen generierte Schema (inkl. Relationen, Indizes und neuen Tabellen wie `inventory_recoveries`) siehe:
+
+- database_schema_readme.md
+
 ### Wichtige Tabellen
 ```
 raffles

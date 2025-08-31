@@ -1,6 +1,6 @@
 # Datenbankschema – MystiDraw (aus Migrations abgeleitet)
 
-Stand: 2025-08-29
+Stand: 2025-08-31
 Quelle: Alle Dateien unter `database/migrations/`
 Hinweis: Typen/Constraints gemäß Migrations (Laravel). Ziel-DB geht von MySQL/MariaDB aus.
 
@@ -13,7 +13,7 @@ Hinweis: Typen/Constraints gemäß Migrations (Laravel). Ziel-DB geht von MySQL/
 - Raffles: `raffles`, `raffle_pricing_tiers`, `raffle_items`, `raffle_purchases`
 - Bestellungen & Zahlungen: `orders`, `order_items`, `payments`, `invoice_counters`
 - Tickets: `tickets`, `ticket_outcomes`
-- Inventar: `user_items`, `user_inventory`
+- Inventar: `user_items`, `user_inventory`, `inventory_recoveries`
 - Adressen & Versand: `addresses`, `order_addresses`, `shipments`, `shipment_items`
 - Abos/Stripe: `subscriptions`, `subscription_items`
 - Newsletter: `newsletter_subscriptions`
@@ -283,6 +283,25 @@ Beziehungen:
 
 ---
 
+### inventory_recoveries
+- id (PK)
+- user_id (FK -> users.id, null, ON DELETE SET NULL)
+- product_id (FK -> products.id, CASCADE)
+- raffle_item_id (FK -> raffle_items.id, null, ON DELETE SET NULL)
+- quantity (unsigned int)
+- purged_at (timestamp)
+- created_at / updated_at
+
+Zweck:
+- Audit-Log für freigewordene Items nach automatischem Purge abgelaufener Inventareinträge. Diese Einträge beziehen sich auf ein Produkt und optional auf ein konkretes Raffle-Item; zusätzlich wird der (ggf. später gelöschte) User referenziert.
+
+Indexe:
+- index(product_id)
+- index(raffle_item_id)
+- index(purged_at)
+
+---
+
 ### addresses
 - id (PK)
 - user_id (FK -> users.id, CASCADE)
@@ -380,12 +399,13 @@ Beziehungen:
 ---
 
 ## Relationen (Kurzüberblick)
-- users 1:n orders, addresses, shipments, tickets, payments(?), raffle_purchases
+- users 1:n orders, addresses, shipments, tickets, payments(?), raffle_purchases, inventory_recoveries
 - orders 1:n order_items, payments, shipments(?), 1:1..n order_addresses (über type)
 - raffles 1:n raffle_items, raffle_pricing_tiers, order_items, tickets, raffle_purchases
-- products 1:n product_images, raffle_items, user_items, user_inventory
+- products 1:n product_images, raffle_items, user_items, user_inventory, inventory_recoveries
 - tickets 1:1 ticket_outcomes; tickets n:1 orders/users/raffles
 - ticket_outcomes 1:1 user_items
+- raffle_items 1:n inventory_recoveries (optional Bezug)
 - user_items n:1 shipments (über shipment_items Junction)
 - shipments 1:n shipment_items
 
@@ -411,6 +431,7 @@ Beziehungen:
 - ticket_outcomes.ticket_id (unique)
 - user_items.ticket_outcome_id (unique)
 - user_inventory (user_id, product_id) (unique)
+- inventory_recoveries: index(product_id), index(raffle_item_id), index(purged_at)
 - newsletter_subscriptions.user_id (unique), .unsubscribe_token (unique)
 - payments.invoice_number (unique), payments.credit_note_number (unique)
 - raffle_purchases.payment_intent_id (unique), index (raffle_id, status)
