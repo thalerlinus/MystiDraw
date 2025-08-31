@@ -494,9 +494,9 @@ onMounted(() => {
             
             <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="text-center mb-12 md:mb-16">
-                    <h2 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 md:mb-6">Vertraut von tausenden Spielern</h2>
+                    <h2 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 md:mb-6">Neu gestartet – dein Vertrauen zählt</h2>
                     <p class="text-lg md:text-xl text-navy-200 max-w-3xl mx-auto leading-relaxed">
-                        Über <span class="text-gold-400 font-bold">25.000+</span> gezogene Lose und eine wachsende Community
+                        Wir sind frisch gestartet und setzen auf Transparenz, sichere Zahlung und schnellen Versand.
                     </p>
                 </div>
 
@@ -504,26 +504,26 @@ onMounted(() => {
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 mb-16">
                     <div class="text-center group">
                         <div class="bg-white/10 backdrop-blur-sm rounded-2xl md:rounded-3xl p-4 md:p-6 border border-gold-400/20 hover:border-gold-400/40 transition-all duration-300 group-hover:scale-105">
-                            <div class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gold-400 mb-1 md:mb-2">25k+</div>
-                            <div class="text-navy-200 font-semibold text-xs sm:text-sm md:text-base">Gezogene Lose</div>
+                            <div class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gold-400 mb-1 md:mb-2">Neu 2025</div>
+                            <div class="text-navy-200 font-semibold text-xs sm:text-sm md:text-base">Frisch gestartet</div>
                         </div>
                     </div>
                     <div class="text-center group">
                         <div class="bg-white/10 backdrop-blur-sm rounded-2xl md:rounded-3xl p-4 md:p-6 border border-gold-400/20 hover:border-gold-400/40 transition-all duration-300 group-hover:scale-105">
-                            <div class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gold-400 mb-1 md:mb-2">98%</div>
-                            <div class="text-navy-200 font-semibold text-xs sm:text-sm md:text-base">Zufriedenheit</div>
+                            <div class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gold-400 mb-1 md:mb-2">100%</div>
+                            <div class="text-navy-200 font-semibold text-xs sm:text-sm md:text-base">Gewinn pro Los</div>
                         </div>
                     </div>
                     <div class="text-center group">
                         <div class="bg-white/10 backdrop-blur-sm rounded-2xl md:rounded-3xl p-4 md:p-6 border border-gold-400/20 hover:border-gold-400/40 transition-all duration-300 group-hover:scale-105">
-                            <div class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gold-400 mb-1 md:mb-2">15k+</div>
-                            <div class="text-navy-200 font-semibold text-xs sm:text-sm md:text-base">Aktive Nutzer</div>
+                            <div class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gold-400 mb-1 md:mb-2">DE</div>
+                            <div class="text-navy-200 font-semibold text-xs sm:text-sm md:text-base">Versand 1–3 Tage</div>
                         </div>
                     </div>
                     <div class="text-center group">
                         <div class="bg-white/10 backdrop-blur-sm rounded-2xl md:rounded-3xl p-4 md:p-6 border border-gold-400/20 hover:border-gold-400/40 transition-all duration-300 group-hover:scale-105">
-                            <div class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gold-400 mb-1 md:mb-2">24h</div>
-                            <div class="text-navy-200 font-semibold text-xs sm:text-sm md:text-base">Avg. Versand</div>
+                            <div class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gold-400 mb-1 md:mb-2">&lt;24h</div>
+                            <div class="text-navy-200 font-semibold text-xs sm:text-sm md:text-base">Support-Antwort</div>
                         </div>
                     </div>
                 </div>
