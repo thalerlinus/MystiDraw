@@ -23,13 +23,16 @@ class ImageUploadService
     }
 
     /**
-     * Skaliert ein Bild proportional auf maximal width/height und lädt es als JPEG hoch.
+     * Skaliert ein Bild proportional auf maximal width/height und lädt es als WebP hoch.
      */
     public function createAndUploadImage(string $localPath, string $bunnyPath, int $width, int $height, int $quality = 85): bool
     {
         $img = $this->readAndResize($localPath, $width, $height);
-        $payload = (string) $img->toJpeg($quality);
-        return Storage::disk('bunnycdn')->put($bunnyPath, $payload, 'public');
+        $payload = (string) $img->toWebp($quality);
+        return Storage::disk('bunnycdn')->put($bunnyPath, $payload, [
+            'visibility' => 'public',
+            'mimetype' => 'image/webp',
+        ]);
     }
 
     /**
@@ -52,7 +55,7 @@ class ImageUploadService
 
     protected function readAndResize(string $localPath, int $width, int $height)
     {
-    $img = $this->manager->read($localPath); // remove orientate() for compatibility
+        $img = $this->manager->read($localPath); // remove orientate() for compatibility
         return $img->scaleDown(width: $width, height: $height);
     }
 

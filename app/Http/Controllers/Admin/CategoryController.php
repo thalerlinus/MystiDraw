@@ -52,7 +52,7 @@ class CategoryController extends Controller
         if ($request->hasFile('hero_image')) {
             try {
                 $file = $request->file('hero_image');
-                $bunnyPath = 'categories/'.$slug.'.jpg'; // re-encode to jpg
+                $bunnyPath = 'categories/'.$slug.'.webp'; // re-encode to webp
                 $paths = $uploader->createAndUploadImageWithThumb(
                     $file->getRealPath(),
                     $bunnyPath,
@@ -106,7 +106,7 @@ class CategoryController extends Controller
                 $uploader->deleteImageWithThumb($category->hero_image_path);
             }
             $file = $request->file('hero_image');
-            $bunnyPath = 'categories/'.$data['slug'].'.jpg';
+            $bunnyPath = 'categories/'.$data['slug'].'.webp';
             $paths = $uploader->createAndUploadImageWithThumb($file->getPathname(), $bunnyPath, [1600,1600], [400,400]);
             $updatePayload['hero_image_path'] = $paths['main'];
             $updatePayload['thumbnail_path'] = $paths['thumb'];

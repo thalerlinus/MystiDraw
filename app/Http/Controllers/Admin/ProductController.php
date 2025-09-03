@@ -59,7 +59,7 @@ class ProductController extends Controller
         $createdImages = [];
         foreach ($files as $idx => $file) {
             try {
-                $remotePath = "products/{$product->id}/".uniqid().'.jpg';
+                $remotePath = "products/{$product->id}/".uniqid().'.webp';
                 $paths = $uploader->createAndUploadImageWithThumb(
                     $file->getRealPath(),
                     $remotePath,

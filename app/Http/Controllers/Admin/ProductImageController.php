@@ -28,8 +28,8 @@ class ProductImageController extends Controller
         try {
             foreach ($data['images'] as $idx => $file) {
                 $uuid = Str::uuid()->toString();
-                // Wir re-encodieren immer zu JPG -> konsistenter Pfad
-                $remoteMainPath = "products/{$product->id}/{$uuid}.jpg";
+                // Wir re-encodieren immer zu WebP -> konsistenter Pfad
+                $remoteMainPath = "products/{$product->id}/{$uuid}.webp";
                 $paths = $this->imageUploader->createAndUploadImageWithThumb(
                     localPath: $file->getRealPath(),
                     baseBunnyPath: $remoteMainPath,
