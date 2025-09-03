@@ -57,17 +57,17 @@ const defaultOgImage = base + '/images/og-default.jpg';
   <MainLayout title="Raffles" :user="$page.props.auth?.user">
     <Head>
       <title>Raffles – MystiDraw</title>
-      <meta name="description" content="Mystery Box Raffles mit 100% Gewinnchance – entdecke jetzt aktive Raffles in verschiedenen Kategorien und sichere dir Überraschungen!" />
+      <meta name="description" content="Los Raffles mit 100% Gewinnchance – entdecke jetzt aktive Raffles in verschiedenen Kategorien und sichere dir Überraschungen!" />
       <link rel="canonical" :href="canonical" />
       <meta property="og:type" content="website" />
       <meta property="og:site_name" content="MystiDraw" />
       <meta property="og:title" content="Raffles – MystiDraw" />
-      <meta property="og:description" content="Mystery Box Raffles mit 100% Gewinnchance – entdecke jetzt aktive Raffles in verschiedenen Kategorien und sichere dir Überraschungen!" />
+      <meta property="og:description" content="Los Raffles mit 100% Gewinnchance – entdecke jetzt aktive Raffles in verschiedenen Kategorien und sichere dir Überraschungen!" />
       <meta property="og:url" :content="canonical" />
       <meta property="og:image" :content="defaultOgImage" />
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content="Raffles – MystiDraw" />
-      <meta name="twitter:description" content="Mystery Box Raffles mit 100% Gewinnchance – entdecke jetzt aktive Raffles in verschiedenen Kategorien und sichere dir Überraschungen!" />
+      <meta name="twitter:description" content="Los Raffles mit 100% Gewinnchance – entdecke jetzt aktive Raffles in verschiedenen Kategorien und sichere dir Überraschungen!" />
       <meta name="twitter:image" :content="defaultOgImage" />
     </Head>
   <JsonLd v-if="$page.props.jsonLd" :json="$page.props.jsonLd" key="raffles-list" />
@@ -86,13 +86,13 @@ const defaultOgImage = base + '/images/og-default.jpg';
         <div class="text-center mb-8">
           <h1 class="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
             <font-awesome-icon :icon="['fas', 'dice']" class="mr-4 text-yellow-400 drop-shadow-lg" />
-            Mystery-Box 
+            Los 
             <span class="bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-400 bg-clip-text text-transparent animate-pulse">
               Raffles
             </span>
           </h1>
           <p class="text-xl md:text-2xl text-slate-300 max-w-3xl mx-auto leading-relaxed">
-            Entdecke spannende Mystery-Boxen mit <span class="text-yellow-400 font-semibold">100% Gewinngarantie</span>. 
+            Entdecke spannende Lose mit <span class="text-yellow-400 font-semibold">100% Gewinngarantie</span>. 
             Filtere nach Kategorien und finde dein nächstes Abenteuer!
           </p>
         </div>
@@ -137,7 +137,7 @@ const defaultOgImage = base + '/images/og-default.jpg';
         <div class="mt-12 text-center">
           <div class="inline-flex items-center gap-2 bg-yellow-400/20 backdrop-blur-sm border border-yellow-400/30 rounded-full px-6 py-3 text-yellow-300">
             <font-awesome-icon :icon="['fas', 'star']" class="animate-pulse" />
-            <span class="font-medium">Beginne dein Mystery-Abenteuer!</span>
+            <span class="font-medium">Beginne dein Los-Abenteuer!</span>
           </div>
         </div>
       </div>
