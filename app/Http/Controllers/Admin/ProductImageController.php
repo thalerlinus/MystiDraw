@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class ProductImageController extends Controller
 {
@@ -78,12 +79,35 @@ class ProductImageController extends Controller
     {
         $payload = $request->validate([
             'order' => 'required|array|min:1',
-            'order.*' => 'integer|exists:product_images,id'
+            'order.*' => [
+                'integer',
+                Rule::exists('product_images', 'id')->where(fn($q) => $q->where('product_id', $product->id))
+            ],
         ]);
-        $i = 0;
-        foreach ($payload['order'] as $id) {
-            ProductImage::where('product_id', $product->id)->where('id', $id)->update(['sort_order' => $i++]);
-        }
+
+        DB::transaction(function () use ($product, $payload) {
+            // Sperre alle Bilderzeilen dieses Produkts für konsistente Updates
+            $images = ProductImage::where('product_id', $product->id)->lockForUpdate()->get();
+
+            // Map gewünschter Positionen
+            $positionById = [];
+            foreach ($payload['order'] as $i => $id) {
+                $positionById[(int)$id] = $i; // 0-basiert
+            }
+
+            // Einheitliche, eindeutige Sortierung für alle Bilder
+            $next = count($positionById);
+            foreach ($images as $img) {
+                if (array_key_exists($img->id, $positionById)) {
+                    $img->sort_order = $positionById[$img->id];
+                } else {
+                    // Nicht übermittelte Bilder ans Ende hängen
+                    $img->sort_order = $next++;
+                }
+                $img->save();
+            }
+        });
+
         return back()->with('success', 'Reihenfolge gespeichert');
     }
 
