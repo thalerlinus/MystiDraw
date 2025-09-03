@@ -19,6 +19,7 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
         "platformcommunity/flysystem-bunnycdn": "*",
+        "sentry/sentry-laravel": "^4.15",
         "spatie/laravel-sitemap": "^7.3",
         "tightenco/ziggy": "^2.0"
     },
