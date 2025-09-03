@@ -35,20 +35,26 @@ return Application::configure(basePath: dirname(__DIR__))
             return \Inertia\Inertia::render('Errors/404')->toResponse($request)->setStatusCode(404);
         });
 
+        // Nur 500-Fehler auf die benutzerdefinierte 500-Seite mappen, sonst Standardverhalten beibehalten
         $exceptions->render(function (\Throwable $e, $request) {
-            if ($request->expectsJson()) {
-                return response()->json(['message' => 'Interner Serverfehler'], 500);
-            }
-            
-            // Für 500er Fehler (nicht 404)
-            if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpException && $e->getStatusCode() !== 404) {
+            // Wenn es eine HttpException mit Status 500 ist → eigene 500-Seite
+            if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface && $e->getStatusCode() === 500) {
+                if ($request->expectsJson()) {
+                    return response()->json(['message' => 'Interner Serverfehler'], 500);
+                }
                 return \Inertia\Inertia::render('Errors/500')->toResponse($request)->setStatusCode(500);
             }
-            
-            // Für alle anderen Exceptions (falls nicht im Debug-Modus)
-            if (!config('app.debug') && !($e instanceof \Symfony\Component\HttpKernel\Exception\NotFoundHttpException)) {
+
+            // Nicht-HttpExceptions führen in Produktion (debug=false) zu 500 → eigene 500-Seite
+            if (!config('app.debug') && !($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface)) {
+                if ($request->expectsJson()) {
+                    return response()->json(['message' => 'Interner Serverfehler'], 500);
+                }
                 return \Inertia\Inertia::render('Errors/500')->toResponse($request)->setStatusCode(500);
             }
+
+            // Für alle anderen Fälle Standard-Handling (Status/Seite) beibehalten
+            return null;
         });
     })
     ->withProviders([
