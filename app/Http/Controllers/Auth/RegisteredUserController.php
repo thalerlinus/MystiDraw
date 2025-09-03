@@ -35,7 +35,8 @@ class RegisteredUserController extends Controller
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'terms_accepted' => 'required|accepted',
-            'newsletter' => 'sometimes|accepted',
+            // Newsletter ist optional; booleans true/false erlaubt
+            'newsletter' => 'nullable|boolean',
         ]);
 
         $user = User::create([
