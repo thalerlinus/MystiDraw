@@ -122,6 +122,30 @@ const openImage = (url) => { if(!url) return; previewImageUrl.value = url; showI
         </table>
       </div>
     </div>
+
+    <!-- Pagination -->
+    <div v-if="products?.links?.length" class="mt-4 flex items-center justify-between">
+      <div class="text-sm text-gray-600">
+        <span v-if="products.total">Zeigt {{ products.from }}–{{ products.to }} von {{ products.total }}</span>
+      </div>
+      <nav class="isolate inline-flex -space-x-px rounded-md shadow" aria-label="Pagination">
+        <template v-for="(link, i) in products.links" :key="i">
+          <Link
+            v-if="link.url"
+            :href="link.url"
+            preserve-scroll
+            class="relative inline-flex items-center px-3 py-1.5 text-sm ring-1 ring-inset ring-gray-300"
+            :class="link.active ? 'z-10 bg-indigo-50 text-indigo-600 ring-indigo-600' : 'bg-white text-gray-700 hover:bg-gray-50'"
+          >
+            <span v-html="link.label"></span>
+          </Link>
+          <span v-else class="relative inline-flex items-center px-3 py-1.5 text-sm text-gray-300 ring-1 ring-inset ring-gray-300 bg-white">
+            <span v-html="link.label"></span>
+          </span>
+        </template>
+      </nav>
+    </div>
+
     <ImagePreviewModal :show="showImagePreview" :url="previewImageUrl" :alt="''" @close="showImagePreview=false" />
   </AdminLayout>
 </template>
