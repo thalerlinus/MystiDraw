@@ -92,6 +92,30 @@ class ProductController extends Controller
         return Inertia::render('Admin/Products/Show', ['product' => $product]);
     }
 
+    public function edit(Product $product)
+    {
+        $product->load('images');
+        $bunnyPull = config('filesystems.disks.bunnycdn.pull_zone');
+        return Inertia::render('Admin/Products/Edit', [
+            'product' => $product,
+            'bunny' => [ 'pull_zone' => $bunnyPull ],
+        ]);
+    }
+
+    public function update(Request $request, Product $product)
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'base_cost' => 'required|numeric|min:0',
+            'default_tier' => 'nullable|string|in:A,B,C,D,E',
+            'active' => 'required|boolean',
+        ]);
+
+        $product->update($data);
+        return back()->with('success', 'Produkt aktualisiert');
+    }
+
     public function overview(Request $request)
     {
         // Optional: filter by active/q later
