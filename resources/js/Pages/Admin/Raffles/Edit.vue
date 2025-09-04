@@ -41,6 +41,14 @@ function addItem(){
 function removeItem(i){
   form.items.splice(i,1);
 }
+
+function onProductChange(index, product){
+  const it = form.items[index];
+  if(!it) return;
+  // Beim Produktwechsel Tier immer auf das Default-Tier des Produkts setzen
+  it.tier = (product && product.default_tier) ? product.default_tier : '';
+}
+
 function submit(){
   form.put(`/admin/raffles/${raffle.id}`);
 }
@@ -56,18 +64,18 @@ function submit(){
     </div>
     <form @submit.prevent="submit" class="space-y-6 max-w-3xl">
       <div>
-        <label class="block text-sm font-medium text-gray-700">Name</label>
-        <input v-model="form.name" type="text" class="mt-1 w-full rounded border-gray-300" />
+        <label class="block text-sm font-medium text-gray-700">Name <span class="text-red-600">*</span></label>
+        <input v-model="form.name" type="text" required class="mt-1 w-full rounded border-gray-300" />
         <div v-if="form.errors.name" class="text-sm text-red-600">{{ form.errors.name }}</div>
       </div>
       <div>
-        <label class="block text-sm font-medium text-gray-700">Slug</label>
-        <input v-model="form.slug" type="text" class="mt-1 w-full rounded border-gray-300" />
+        <label class="block text-sm font-medium text-gray-700">Slug <span class="text-red-600">*</span></label>
+        <input v-model="form.slug" type="text" required class="mt-1 w-full rounded border-gray-300" />
         <div v-if="form.errors.slug" class="text-sm text-red-600">{{ form.errors.slug }}</div>
       </div>
       <div>
-        <label class="block text-sm font-medium text-gray-700">Kategorie</label>
-        <select v-model="form.category_id" class="mt-1 w-full rounded border-gray-300">
+        <label class="block text-sm font-medium text-gray-700">Kategorie <span class="text-red-600">*</span></label>
+        <select v-model="form.category_id" required class="mt-1 w-full rounded border-gray-300">
           <option value="">-- auswählen --</option>
           <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
         </select>
@@ -85,16 +93,16 @@ function submit(){
       </div>
       <div class="grid md:grid-cols-3 gap-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700">Ticket Grundpreis</label>
-          <input v-model="form.base_ticket_price" type="number" step="0.01" class="mt-1 w-full rounded border-gray-300" />
+          <label class="block text-sm font-medium text-gray-700">Ticket Grundpreis <span class="text-red-600">*</span></label>
+          <input v-model="form.base_ticket_price" type="number" step="0.01" required class="mt-1 w-full rounded border-gray-300" />
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700">Währung</label>
-          <input v-model="form.currency" type="text" class="mt-1 w-full rounded border-gray-300" />
+          <label class="block text-sm font-medium text-gray-700">Währung <span class="text-red-600">*</span></label>
+          <input v-model="form.currency" type="text" required class="mt-1 w-full rounded border-gray-300" />
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700">Status</label>
-          <select v-model="form.status" class="mt-1 w-full rounded border-gray-300">
+          <label class="block text-sm font-medium text-gray-700">Status <span class="text-red-600">*</span></label>
+          <select v-model="form.status" required class="mt-1 w-full rounded border-gray-300">
             <option value="draft">Draft</option>
             <option value="scheduled">Geplant</option>
             <option value="live">Live</option>
@@ -136,19 +144,19 @@ function submit(){
         <div v-if="form.items.length === 0" class="text-xs text-gray-500">Noch keine Produkte hinzugefügt.</div>
         <div v-for="(it,i) in form.items" :key="i" class="grid md:grid-cols-12 gap-2 items-start mb-3 p-2 border rounded bg-white">
           <div class="md:col-span-5 space-y-1">
-            <label class="block text-[11px] font-medium">Produkt</label>
-            <ProductSelect v-model="it.product_id" :products="products" :pull-zone="bunnyPullZone" :show-description="true" />
+            <label class="block text-[11px] font-medium">Produkt <span class="text-red-600">*</span></label>
+            <ProductSelect v-model="it.product_id" :products="products" :pull-zone="bunnyPullZone" :show-description="true" @change="onProductChange(i, $event)" />
           </div>
-          <div class="md:col-span-1">
-            <label class="block text-[11px] font-medium">Tier</label>
-            <select v-model="it.tier" class="w-full rounded border-gray-300 text-sm">
+          <div class="md:col-span-2">
+            <label class="block text-[11px] font-medium">Tier <span class="text-red-600">*</span></label>
+            <select v-model="it.tier" required class="w-full rounded border-gray-300 text-sm">
               <option value="">-</option>
               <option v-for="t in ['A','B','C','D','E']" :key="t" :value="t">{{ t }}</option>
             </select>
           </div>
           <div class="md:col-span-2">
-            <label class="block text-[11px] font-medium">Anzahl</label>
-            <input v-model.number="it.quantity_total" type="number" min="1" class="w-full rounded border-gray-300 text-sm" />
+            <label class="block text-[11px] font-medium">Anzahl <span class="text-red-600">*</span></label>
+            <input v-model.number="it.quantity_total" type="number" min="1" required class="w-full rounded border-gray-300 text-sm" />
           </div>
           <div class="md:col-span-2">
             <label class="block text-[11px] font-medium">Gewicht</label>
