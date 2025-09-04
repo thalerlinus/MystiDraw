@@ -17,6 +17,47 @@
 
     <div class="bg-gradient-to-b from-navy-50 via-white to-gold-50 min-h-screen">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+        <!-- Shipping Info Banner (only show if user has opened tickets) -->
+        <div v-if="stats.opened_tickets > 0" class="bg-gradient-to-r from-navy-800 via-navy-700 to-navy-800 rounded-lg sm:rounded-xl lg:rounded-2xl shadow-xl sm:shadow-2xl p-4 sm:p-6 lg:p-8 mb-6 sm:mb-8 lg:mb-12 border border-navy-600">
+          <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-4 lg:space-x-6">
+            <div class="flex-shrink-0 self-center sm:self-start">
+              <div class="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 bg-gold-gradient rounded-xl sm:rounded-2xl flex items-center justify-center animate-bounce">
+                <font-awesome-icon :icon="['fas', 'shipping-fast']" class="text-lg sm:text-2xl lg:text-3xl text-navy-900" />
+              </div>
+            </div>
+            <div class="flex-1 min-w-0 text-center sm:text-left">
+              <h3 class="text-lg sm:text-xl lg:text-2xl font-black text-white mb-2 sm:mb-3 lg:mb-4">Gewinne aus dem Inventar versenden</h3>
+              <p class="text-sm sm:text-base lg:text-lg text-navy-200 mb-4 sm:mb-4 lg:mb-6 leading-relaxed">
+                Deine geöffneten Tickets mit Gewinnen sind in deinem Inventar verfügbar und können versendet werden.
+              </p>
+              
+              <!-- Action Button -->
+              <div class="mb-4 sm:mb-4 lg:mb-6">
+                <Link 
+                  :href="route('inventory.index')"
+                  class="inline-flex items-center justify-center w-full sm:w-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-3 lg:py-4 bg-gold-gradient hover:shadow-lg hover:shadow-gold-500/25 text-navy-900 font-black rounded-lg sm:rounded-xl transition-all duration-300 gap-2 sm:gap-3 transform hover:scale-105 text-sm sm:text-sm lg:text-base"
+                >
+                  <font-awesome-icon :icon="['fas', 'boxes-packing']" class="text-base sm:text-lg" />
+                  <span>Zum Inventar</span>
+                  <font-awesome-icon :icon="['fas', 'arrow-right']" class="text-xs sm:text-sm" />
+                </Link>
+              </div>
+              
+              <!-- Info about shipping -->
+              <div class="flex flex-col space-y-2 sm:space-y-0 sm:flex-row sm:items-center sm:justify-center lg:justify-start gap-2 sm:gap-3 lg:gap-4">
+                <div class="flex items-center justify-center sm:justify-start space-x-1 sm:space-x-2 bg-gold-500/20 px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 rounded-md sm:rounded-lg border border-gold-400/30">
+                  <font-awesome-icon :icon="['fas', 'euro-sign']" class="text-gold-300 text-xs sm:text-sm" />
+                  <span class="font-bold text-gold-200 text-xs sm:text-sm lg:text-base">7,00 € Versand</span>
+                </div>
+                <div class="flex items-center justify-center sm:justify-start space-x-1 sm:space-x-2 bg-emerald-500/20 px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 rounded-md sm:rounded-lg border border-emerald-400/30">
+                  <font-awesome-icon :icon="['fas', 'truck']" class="text-emerald-300 text-xs sm:text-sm" />
+                  <span class="text-emerald-200 text-xs sm:text-sm lg:text-base">1-3 Werktage</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Statistics -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-12">
           <!-- Total Tickets -->

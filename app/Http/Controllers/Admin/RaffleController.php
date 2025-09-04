@@ -82,6 +82,7 @@ class RaffleController extends Controller
             'ends_at' => 'nullable|date|after:starts_at',
             'base_ticket_price' => 'required|numeric|min:0',
             'currency' => 'required|string|size:3',
+            'status' => 'required|string|in:draft,scheduled,live,paused,sold_out,finished,archived',
             'pricing_tiers' => 'array',
             'pricing_tiers.*.min_qty' => 'required_with:pricing_tiers|integer|min:1',
             'pricing_tiers.*.unit_price' => 'required_with:pricing_tiers|numeric|min:0',
@@ -92,7 +93,7 @@ class RaffleController extends Controller
             'items.*.weight' => 'nullable|integer|min:1',
             'items.*.is_last_one' => 'boolean'
         ]);
-        $data['status'] = 'draft';
+        // $data['status'] wird aus dem Request übernommen (Standard im UI ist 'draft')
         $data['public_stats'] = false;
         $pricingTiers = $data['pricing_tiers'] ?? [];
         $items = $data['items'] ?? [];
