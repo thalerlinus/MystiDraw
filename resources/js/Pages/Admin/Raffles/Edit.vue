@@ -28,6 +28,13 @@ const selectedItemsDetailed = computed(()=> {
     }));
 });
 
+// Gesamtanzahl (aufsummierte Stückzahlen) der ausgewählten Gewinne
+const totalSelectedQuantity = computed(() => {
+  return form.items
+    .filter(it => it.product_id)
+    .reduce((sum, it) => sum + (Number(it.quantity_total) || 0), 0);
+});
+
 function productThumb(p){
   if(!p || !p.thumbnail_path) return null;
   return getImageUrl(p.thumbnail_path, bunnyPullZone);
@@ -169,7 +176,7 @@ function submit(){
           </div>
 
           <div v-if="selectedItemsDetailed.length" class="mb-5">
-            <h4 class="text-[11px] uppercase tracking-wide text-gray-500 mb-2">Ausgewählt ({{ selectedItemsDetailed.length }})</h4>
+            <h4 class="text-[11px] uppercase tracking-wide text-gray-500 mb-2">Ausgewählt ({{ selectedItemsDetailed.length }} | Gesamt: {{ totalSelectedQuantity }})</h4>
             <div class="flex flex-wrap gap-3">
               <div v-for="si in selectedItemsDetailed" :key="si.product_id" class="flex items-center gap-2 pr-2 bg-gray-50 border rounded-md shadow-sm">
                 <img v-if="si.product && si.product.thumbnail_path" :src="getImageUrl(si.product.thumbnail_path, bunnyPullZone)" class="h-10 w-10 object-cover rounded-l-md" />
