@@ -28,14 +28,14 @@
       </div>
       
       <div 
-        v-if="raffle.items && raffle.items.length > 0"
+        v-if="sortedItems.length > 0"
         class="flex transition-transform duration-500 ease-in-out h-full"
         :style="{ transform: `translateX(-${currentImageIndex * 100}%)` }"
         :class="{ 'filter grayscale': isSoldOut }"
         aria-live="polite"
       >
         <div 
-          v-for="item in raffle.items" 
+          v-for="item in sortedItems" 
           :key="item.id"
           class="min-w-full h-full relative bg-gray-100"
         >
@@ -96,20 +96,20 @@
 
       <!-- Navigation Dots -->
       <div 
-        v-if="raffle.items && raffle.items.length > 1"
+        v-if="sortedItems.length > 1"
         class="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-1.5"
         role="tablist"
         :aria-label="`Bild Auswahl für ${raffle.name}`"
       >
         <button
-          v-for="(item, index) in raffle.items"
+          v-for="(item, index) in sortedItems"
           :key="index"
           @click="currentImageIndex = index"
           class="group p-4 rounded-full transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
           role="tab"
           :aria-selected="(index === currentImageIndex).toString()"
           :tabindex="index === currentImageIndex ? 0 : -1"
-          :aria-label="`Zeige Bild ${index + 1} von ${raffle.items.length}`"
+          :aria-label="`Zeige Bild ${index + 1} von ${sortedItems.length}`"
           type="button"
         >
           <span
@@ -124,7 +124,7 @@
 
       <!-- Navigation Arrows -->
       <button
-        v-if="raffle.items && raffle.items.length > 1"
+        v-if="sortedItems.length > 1"
         @click="previousImage"
         class="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full transition-all duration-300 opacity-0 group-hover:opacity-100"
         aria-label="Vorheriges Bild"
@@ -136,7 +136,7 @@
       </button>
       
       <button
-        v-if="raffle.items && raffle.items.length > 1"
+        v-if="sortedItems.length > 1"
         @click="nextImage"
         class="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-2 rounded-full transition-all duration-300 opacity-0 group-hover:opacity-100"
         aria-label="Nächstes Bild"
@@ -243,16 +243,27 @@ onUnmounted(() => {
   }
 });
 
+// Sortierung der Items nach Tier (A -> E, danach alles andere)
+const sortedItems = computed(() => {
+  const order = { A: 0, B: 1, C: 2, D: 3, E: 4 };
+  if (!props.raffle.items) return [];
+  return [...props.raffle.items].sort((a, b) => {
+    const av = order[a.tier] ?? 999;
+    const bv = order[b.tier] ?? 999;
+    return av - bv;
+  });
+});
+
 const nextImage = () => {
-  if (props.raffle.items && props.raffle.items.length > 1) {
-    currentImageIndex.value = (currentImageIndex.value + 1) % props.raffle.items.length;
+  if (sortedItems.value.length > 1) {
+    currentImageIndex.value = (currentImageIndex.value + 1) % sortedItems.value.length;
   }
 };
 
 const previousImage = () => {
-  if (props.raffle.items && props.raffle.items.length > 1) {
+  if (sortedItems.value.length > 1) {
     currentImageIndex.value = currentImageIndex.value === 0 
-      ? props.raffle.items.length - 1 
+      ? sortedItems.value.length - 1 
       : currentImageIndex.value - 1;
   }
 };
