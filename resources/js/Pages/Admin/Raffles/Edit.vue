@@ -12,6 +12,22 @@ const categories = page.props.categories || [];
 const products = page.props.products || [];
 const bunnyPullZone = page.props.bunny?.pull_zone || null;
 const productMap = computed(()=> Object.fromEntries(products.map(p=>[p.id,p])));
+
+// Bereits in dieser Raffle ausgewählte Produkt-IDs
+const selectedProductIds = computed(() => {
+  return form.items.map(item => item.product_id).filter(id => id);
+});
+
+// Detail-Liste der aktuell ausgewählten Produkte
+const selectedItemsDetailed = computed(()=> {
+  return form.items
+    .filter(it => it.product_id)
+    .map(it => ({
+      ...it,
+      product: productMap.value[it.product_id] || null
+    }));
+});
+
 function productThumb(p){
   if(!p || !p.thumbnail_path) return null;
   return getImageUrl(p.thumbnail_path, bunnyPullZone);
@@ -62,124 +78,141 @@ function submit(){
     <div v-if="$page.props.flash?.error" class="mb-4 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
       {{$page.props.flash.error}}
     </div>
-    <form @submit.prevent="submit" class="space-y-6 max-w-3xl">
-      <div>
-        <label class="block text-sm font-medium text-gray-700">Name <span class="text-red-600">*</span></label>
-        <input v-model="form.name" type="text" required class="mt-1 w-full rounded border-gray-300" />
-        <div v-if="form.errors.name" class="text-sm text-red-600">{{ form.errors.name }}</div>
-      </div>
-      <div>
-        <label class="block text-sm font-medium text-gray-700">Slug <span class="text-red-600">*</span></label>
-        <input v-model="form.slug" type="text" required class="mt-1 w-full rounded border-gray-300" />
-        <div v-if="form.errors.slug" class="text-sm text-red-600">{{ form.errors.slug }}</div>
-      </div>
-      <div>
-        <label class="block text-sm font-medium text-gray-700">Kategorie <span class="text-red-600">*</span></label>
-        <select v-model="form.category_id" required class="mt-1 w-full rounded border-gray-300">
-          <option value="">-- auswählen --</option>
-          <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
-        </select>
-        <div v-if="form.errors.category_id" class="text-sm text-red-600">{{ form.errors.category_id }}</div>
-      </div>
-      <div class="grid grid-cols-2 gap-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Start</label>
-          <input v-model="form.starts_at" type="datetime-local" class="mt-1 w-full rounded border-gray-300" />
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Ende</label>
-          <input v-model="form.ends_at" type="datetime-local" class="mt-1 w-full rounded border-gray-300" />
-        </div>
-      </div>
-      <div class="grid md:grid-cols-3 gap-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Ticket Grundpreis <span class="text-red-600">*</span></label>
-          <input v-model="form.base_ticket_price" type="number" step="0.01" required class="mt-1 w-full rounded border-gray-300" />
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Währung <span class="text-red-600">*</span></label>
-          <input v-model="form.currency" type="text" required class="mt-1 w-full rounded border-gray-300" />
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Status <span class="text-red-600">*</span></label>
-          <select v-model="form.status" required class="mt-1 w-full rounded border-gray-300">
-            <option value="draft">Draft</option>
-            <option value="scheduled">Geplant</option>
-            <option value="live">Live</option>
-            <option value="paused">Pausiert</option>
-            <option value="sold_out">Ausverkauft</option>
-            <option value="finished">Beendet</option>
-            <option value="archived">Archiviert</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="pt-4 border-t">
-        <div class="flex items-center justify-between mb-2">
-          <h3 class="font-semibold text-sm">Staffelpreise (optional)</h3>
-          <button type="button" @click="addTier" class="text-xs px-2 py-1 rounded bg-gray-200 hover:bg-gray-300">+ Tier</button>
-        </div>
-        <div v-if="form.pricing_tiers.length === 0" class="text-xs text-gray-500">Keine Staffel angelegt.</div>
-        <div v-for="(t,i) in form.pricing_tiers" :key="i" class="grid grid-cols-5 gap-2 items-end mb-2">
-          <div class="col-span-2">
-            <label class="block text-[11px] font-medium">Mindestmenge</label>
-            <input v-model.number="t.min_qty" type="number" min="1" class="w-full rounded border-gray-300 text-sm" />
+    <form @submit.prevent="submit" class="grid gap-10 xl:grid-cols-2 items-start w-full">
+      <!-- Linke Spalte -->
+      <div class="space-y-8">
+        <div class="bg-white rounded-lg border p-5 shadow-sm space-y-5">
+          <div class="grid md:grid-cols-2 gap-5">
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-gray-700">Name <span class="text-red-600">*</span></label>
+              <input v-model="form.name" type="text" required class="mt-1 w-full rounded border-gray-300" />
+              <div v-if="form.errors.name" class="text-xs text-red-600 mt-1">{{ form.errors.name }}</div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Slug <span class="text-red-600">*</span></label>
+              <input v-model="form.slug" type="text" required class="mt-1 w-full rounded border-gray-300" />
+              <div v-if="form.errors.slug" class="text-xs text-red-600 mt-1">{{ form.errors.slug }}</div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Kategorie <span class="text-red-600">*</span></label>
+              <select v-model="form.category_id" required class="mt-1 w-full rounded border-gray-300">
+                <option value="">-- auswählen --</option>
+                <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
+              </select>
+              <div v-if="form.errors.category_id" class="text-xs text-red-600 mt-1">{{ form.errors.category_id }}</div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Start</label>
+              <input v-model="form.starts_at" type="datetime-local" class="mt-1 w-full rounded border-gray-300" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Ende</label>
+              <input v-model="form.ends_at" type="datetime-local" class="mt-1 w-full rounded border-gray-300" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Ticket Grundpreis <span class="text-red-600">*</span></label>
+              <input v-model="form.base_ticket_price" type="number" step="0.01" required class="mt-1 w-full rounded border-gray-300" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Währung <span class="text-red-600">*</span></label>
+              <input v-model="form.currency" type="text" required class="mt-1 w-full rounded border-gray-300" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Status <span class="text-red-600">*</span></label>
+              <select v-model="form.status" required class="mt-1 w-full rounded border-gray-300">
+                <option value="draft">Draft</option>
+                <option value="scheduled">Geplant</option>
+                <option value="live">Live</option>
+                <option value="paused">Pausiert</option>
+                <option value="sold_out">Ausverkauft</option>
+                <option value="finished">Beendet</option>
+                <option value="archived">Archiviert</option>
+              </select>
+            </div>
           </div>
+        </div>
+
+        <div class="bg-white rounded-lg border p-5 shadow-sm">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-semibold text-sm">Staffelpreise (optional)</h3>
+            <button type="button" @click="addTier" class="text-xs px-2 py-1 rounded bg-gray-200 hover:bg-gray-300">+ Tier</button>
+          </div>
+          <div v-if="form.pricing_tiers.length === 0" class="text-xs text-gray-500 mb-2">Keine Staffel angelegt.</div>
+          <div v-for="(t,i) in form.pricing_tiers" :key="i" class="grid grid-cols-5 gap-2 items-end mb-2">
             <div class="col-span-2">
-            <label class="block text-[11px] font-medium">Stückpreis</label>
-            <input v-model="t.unit_price" type="number" step="0.01" min="0" class="w-full rounded border-gray-300 text-sm" />
+              <label class="block text-[11px] font-medium">Mindestmenge</label>
+              <input v-model.number="t.min_qty" type="number" min="1" class="w-full rounded border-gray-300 text-sm" />
+            </div>
+            <div class="col-span-2">
+              <label class="block text-[11px] font-medium">Stückpreis</label>
+              <input v-model="t.unit_price" type="number" step="0.01" min="0" class="w-full rounded border-gray-300 text-sm" />
+            </div>
+            <div class="flex items-center gap-2 pb-1">
+              <button type="button" @click="removeTier(i)" class="text-red-600 text-xs hover:underline">Entfernen</button>
+            </div>
           </div>
-          <div class="flex items-center gap-2 pb-1">
-            <button type="button" @click="removeTier(i)" class="text-red-600 text-xs hover:underline">Entfernen</button>
-          </div>
+          <div v-if="form.errors['pricing_tiers']" class="text-xs text-red-600">{{ form.errors['pricing_tiers'] }}</div>
         </div>
-        <div v-if="form.errors['pricing_tiers']" class="text-xs text-red-600">{{ form.errors['pricing_tiers'] }}</div>
+
+        <div class="bg-white rounded-lg border p-5 shadow-sm">
+          <h3 class="font-semibold text-sm mb-3">Aktionen</h3>
+          <button :disabled="form.processing" class="rounded bg-indigo-600 px-4 py-2 text-white text-sm disabled:opacity-50">Speichern</button>
+        </div>
       </div>
 
-      <div class="pt-4 border-t">
-        <div class="flex items-center justify-between mb-2">
-          <h3 class="font-semibold text-sm">Produkte / Gewinne</h3>
-          <button type="button" @click="addItem" class="text-xs px-2 py-1 rounded bg-gray-200 hover:bg-gray-300">+ Produkt</button>
-        </div>
-        <div v-if="form.items.length === 0" class="text-xs text-gray-500">Noch keine Produkte hinzugefügt.</div>
-        <div v-for="(it,i) in form.items" :key="i" class="grid md:grid-cols-12 gap-2 items-start mb-3 p-2 border rounded bg-white">
-          <div class="md:col-span-5 space-y-1">
-            <label class="block text-[11px] font-medium">Produkt <span class="text-red-600">*</span></label>
-            <ProductSelect v-model="it.product_id" :products="products" :pull-zone="bunnyPullZone" :show-description="true" @change="onProductChange(i, $event)" />
+      <!-- Rechte Spalte -->
+      <div class="space-y-8">
+        <div class="bg-white rounded-lg border p-5 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold text-sm">Produkte / Gewinne</h3>
+            <button type="button" @click="addItem" class="text-xs px-2 py-1 rounded bg-gray-200 hover:bg-gray-300">+ Produkt</button>
           </div>
-          <div class="md:col-span-2">
-            <label class="block text-[11px] font-medium">Tier <span class="text-red-600">*</span></label>
-            <select v-model="it.tier" required class="w-full rounded border-gray-300 text-sm">
-              <option value="">-</option>
-              <option v-for="t in ['A','B','C','D','E']" :key="t" :value="t">{{ t }}</option>
-            </select>
-          </div>
-          <div class="md:col-span-2">
-            <label class="block text-[11px] font-medium">Anzahl <span class="text-red-600">*</span></label>
-            <input v-model.number="it.quantity_total" type="number" min="1" required class="w-full rounded border-gray-300 text-sm" />
-          </div>
-          <div class="md:col-span-2">
-            <label class="block text-[11px] font-medium">Gewicht</label>
-            <input v-model.number="it.weight" type="number" min="1" class="w-full rounded border-gray-300 text-sm" />
-          </div>
-          <div class="md:col-span-1 flex items-center gap-1 pt-5">
-            <input v-model="it.is_last_one" type="checkbox" class="rounded border-gray-300" />
-            <span class="text-[11px]">Last One?</span>
-          </div>
-          <div class="md:col-span-2 flex justify-end pt-5">
-            <button type="button" @click="removeItem(i)" class="text-xs text-red-600 hover:underline">Entfernen</button>
-          </div>
-        </div>
-        <div v-if="form.errors['items']" class="text-xs text-red-600">{{ form.errors['items'] }}</div>
-      </div>
 
-      <div>
-        <button :disabled="form.processing" class="rounded bg-indigo-600 px-4 py-2 text-white disabled:opacity-50">Speichern</button>
+          <div v-if="selectedItemsDetailed.length" class="mb-5">
+            <h4 class="text-[11px] uppercase tracking-wide text-gray-500 mb-2">Ausgewählt ({{ selectedItemsDetailed.length }})</h4>
+            <div class="flex flex-wrap gap-3">
+              <div v-for="si in selectedItemsDetailed" :key="si.product_id" class="flex items-center gap-2 pr-2 bg-gray-50 border rounded-md shadow-sm">
+                <img v-if="si.product && si.product.thumbnail_path" :src="getImageUrl(si.product.thumbnail_path, bunnyPullZone)" class="h-10 w-10 object-cover rounded-l-md" />
+                <div class="py-1 text-xs max-w-[120px] truncate">{{ si.product?.name || '—' }}</div>
+                <button type="button" @click="removeItem(form.items.indexOf(si))" class="text-gray-400 hover:text-red-600 px-1">
+                  <font-awesome-icon :icon="['fas','xmark']" class="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="form.items.length === 0" class="text-xs text-gray-500">Noch keine Produkte hinzugefügt.</div>
+          <div v-for="(it,i) in form.items" :key="i" class="mb-5 rounded-lg border p-3 bg-white shadow-sm relative">
+            <div class="flex items-start gap-4">
+              <div class="flex-1 space-y-2">
+                <label class="block text-[11px] font-medium">Produkt <span class="text-red-600">*</span></label>
+                <ProductSelect v-model="it.product_id" :products="products" :pull-zone="bunnyPullZone" :show-description="true" :current-selected-ids="selectedProductIds" :group-by-category="true" @change="onProductChange(i, $event)" />
+              </div>
+              <div class="w-40 space-y-2">
+                <label class="block text-[11px] font-medium">Tier <span class="text-red-600">*</span></label>
+                <select v-model="it.tier" required class="w-full rounded border-gray-300 text-sm">
+                  <option value="">-</option>
+                  <option v-for="t in ['A','B','C','D','E']" :key="t" :value="t">{{ t }}</option>
+                </select>
+                <label class="block text-[11px] font-medium">Anzahl <span class="text-red-600">*</span></label>
+                <input v-model.number="it.quantity_total" type="number" min="1" required class="w-full rounded border-gray-300 text-sm" />
+                <label class="block text-[11px] font-medium">Gewicht</label>
+                <input v-model.number="it.weight" type="number" min="1" class="w-full rounded border-gray-300 text-sm" />
+                <div class="flex items-center gap-2 pt-1">
+                  <input v-model="it.is_last_one" type="checkbox" class="rounded border-gray-300" />
+                  <span class="text-[11px]">Last One?</span>
+                </div>
+              </div>
+            </div>
+            <button type="button" @click="removeItem(i)" class="absolute top-2 right-2 text-xs text-red-600 hover:underline">Entfernen</button>
+          </div>
+          <div v-if="form.errors['items']" class="text-xs text-red-600">{{ form.errors['items'] }}</div>
+        </div>
       </div>
     </form>
 
-    <!-- Gift Tickets -->
-    <div class="mt-12 max-w-3xl border-t pt-8">
+  <!-- Gift Tickets -->
+  <div class="mt-12 border-t pt-8">
       <h2 class="text-lg font-semibold mb-4">Tickets verschenken</h2>
       <GiftTicketsForm :raffle-id="raffle.id" />
     </div>

@@ -62,7 +62,7 @@ class RaffleController extends Controller
 
     public function create()
     {
-    $categories = Category::orderBy('name')->get(['id','name']);
+        $categories = Category::orderBy('name')->get(['id','name']);
         $products = Product::where('active', true)->orderBy('name')->limit(200)->get(['id','name','default_tier','thumbnail_path','description']);
         $bunnyPull = config('filesystems.disks.bunnycdn.pull_zone');
         return Inertia::render('Admin/Raffles/Create', [
@@ -126,12 +126,19 @@ class RaffleController extends Controller
     {
         $raffle->load(['pricingTiers','items']);
         $categories = Category::orderBy('name')->get(['id','name']);
+        
+        // Bereits ausgewählte Produkt-IDs aus der aktuellen Raffle
+        $selectedProductIds = $raffle->items->pluck('product_id')->toArray();
+        
+        // Alle aktiven Produkte holen, aber bereits ausgewählte für andere Raffles markieren
         $products = Product::where('active', true)->orderBy('name')->limit(200)->get(['id','name','default_tier','thumbnail_path','description']);
+        
         $bunnyPull = config('filesystems.disks.bunnycdn.pull_zone');
         return Inertia::render('Admin/Raffles/Edit', [
             'raffle' => $raffle,
             'categories' => $categories,
             'products' => $products,
+            'selectedProductIds' => $selectedProductIds,
             'bunny' => [ 'pull_zone' => $bunnyPull ],
         ]);
     }
