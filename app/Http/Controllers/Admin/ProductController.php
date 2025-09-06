@@ -5,6 +5,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Services\ImageUploadService;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
@@ -37,6 +38,34 @@ class ProductController extends Controller
 
     public function store(Request $request, ImageUploadService $uploader)
     {
+        // Frühzeitiges Logging der Roh-Upload-Informationen
+        if ($request->hasFile('images')) {
+            foreach ((array)$request->file('images') as $idx => $file) {
+                if ($file === null) {
+                    Log::warning('Product upload: images['.$idx.'] ist null (evtl. PHP Upload Error, zu große POST-Size oder falscher Feldname).');
+                    continue;
+                }
+                if (! $file->isValid()) {
+                    $err = $file->getError();
+                    Log::error('Product upload: ungültige Datei images['.$idx.']: code='.$err.' mapped='.self::uploadErrorMessage($err).' originalName='.(method_exists($file,'getClientOriginalName') ? $file->getClientOriginalName() : 'n/a').' size='.(method_exists($file,'getSize') ? $file->getSize() : 'n/a'));
+                } else {
+                    Log::info('Product upload: Datei OK images['.$idx.'] name='.$file->getClientOriginalName().' size='.$file->getSize());
+                }
+            }
+        } else {
+            if ($request->has('images')) {
+                Log::warning('Product upload: Feld images vorhanden aber kein File-Objekt. Möglicherweise multipart/form-data fehlt oder POST zu groß. Content-Type='.$request->header('Content-Type').' Content-Length='.$request->header('Content-Length'));
+            }
+        }
+
+        // Gesamt Request Größe / Grenzen loggen (hilft bei Live Fehleranalyse)
+        Log::debug('Product upload meta', [
+            'content_length' => $request->header('Content-Length'),
+            'server_upload_max_filesize' => ini_get('upload_max_filesize'),
+            'server_post_max_size' => ini_get('post_max_size'),
+            'memory_limit' => ini_get('memory_limit'),
+        ]);
+
         $validated = $request->validate([
             'sku' => 'nullable|string|max:64|unique:products,sku',
             'name' => 'required|string|max:255',
@@ -72,10 +101,21 @@ class ProductController extends Controller
                     'sort_order' => $idx,
                     'is_primary' => false,
                 ]);
+                Log::info('Product upload: Bild erfolgreich konvertiert & gespeichert', [
+                    'product_id' => $product->id,
+                    'index' => $idx,
+                    'remote_main' => $paths['main'] ?? null,
+                ]);
             } catch (\Throwable $e) {
                 // Bei Fehler bisherige Bilder löschen
-                foreach ($createdImages as $ci) { try { $ci->delete(); } catch (\Throwable) {} }
-                return back()->with('error', 'Fehler beim Bild-Upload: '.$e->getMessage());
+                Log::error('Product upload: Exception beim Verarbeiten eines Bildes', [
+                    'product_id' => $product->id,
+                    'index' => $idx,
+                    'exception' => $e->getMessage(),
+                    'trace' => substr($e->getTraceAsString(),0,2000),
+                ]);
+                foreach ($createdImages as $ci) { try { $ci->delete(); } catch (\Throwable $ignored) { Log::warning('Product upload: konnte temporäres Bild nicht löschen', ['id'=>$ci->id]); } }
+                return back()->with('error', 'Fehler beim Bild-Upload (Details im Log)');
             }
         }
         if (count($createdImages)) {
@@ -175,5 +215,19 @@ class ProductController extends Controller
             'products' => $data,
             'bunny' => [ 'pull_zone' => $bunnyPull ],
         ]);
+    }
+
+    private static function uploadErrorMessage($code): string
+    {
+        return match($code) {
+            UPLOAD_ERR_INI_SIZE => 'Datei überschreitet upload_max_filesize',
+            UPLOAD_ERR_FORM_SIZE => 'Datei überschreitet MAX_FILE_SIZE aus Formular',
+            UPLOAD_ERR_PARTIAL => 'Datei nur teilweise hochgeladen',
+            UPLOAD_ERR_NO_FILE => 'Keine Datei hochgeladen',
+            UPLOAD_ERR_NO_TMP_DIR => 'Fehlender temporärer Ordner',
+            UPLOAD_ERR_CANT_WRITE => 'Fehler beim Schreiben auf die Festplatte',
+            UPLOAD_ERR_EXTENSION => 'PHP Extension hat Upload gestoppt',
+            default => 'Unbekannter Upload-Fehler'
+        };
     }
 }
